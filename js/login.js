@@ -30,8 +30,8 @@
     <form class="login-form" novalidate>
       <p class="login-ask">สมัครบัญชีเป็น</p>
       <div class="login-roles" role="radiogroup" aria-label="สมัครเป็น">
-        <button type="button" class="login-role" data-role="player" role="radio" aria-checked="false"><span>🙂</span>ผู้เล่น</button>
-        <button type="button" class="login-role" data-role="doctor" role="radio" aria-checked="false"><span>🩺</span>แพทย์</button>
+        <button type="button" class="login-role" data-role="player" role="radio" aria-checked="false"><img src="assets/icons/web/player.png" alt="" draggable="false">ผู้เล่น</button>
+        <button type="button" class="login-role" data-role="doctor" role="radio" aria-checked="false"><img src="assets/icons/web/doctor.png" alt="" draggable="false">แพทย์</button>
       </div>
       <img class="login-art" src="${DIR}frame.png" alt="" style="left:20.09%; top:47.32%; width:59.68%; height:14.82%">
       <img class="login-art login-ph" data-for="email" src="${DIR}username.png" alt="" style="left:24.68%; top:50.16%; width:14.49%; height:1.22%">
@@ -40,7 +40,7 @@
              aria-label="อีเมล" style="left:22.4%; top:48.5%; width:55%; height:4.9%">
       <input class="login-input" name="pass" type="password" autocomplete="current-password"
              aria-label="รหัสผ่าน" style="left:22.4%; top:56.3%; width:46%; height:4.9%">
-      <button type="button" class="login-eye" aria-label="แสดงรหัสผ่าน" style="left:68.6%; top:56.6%; width:9%; height:4.3%">👁</button>
+      <button type="button" class="login-eye" aria-label="แสดงรหัสผ่าน" style="left:68.6%; top:56.6%; width:9%; height:4.3%"><img src="assets/icons/web/eye_closed.png" alt="" draggable="false"></button>
       <p class="login-hint">Username = อีเมลของคุณ · รหัสผ่านอย่างน้อย ${ACC.MIN_PASS} ตัว</p>
       <button type="button" class="login-btn" data-act="signup" aria-label="สมัครบัญชี (Sign up)" style="left:20.09%; top:64.71%; width:26.39%; height:6.88%">
         <img src="${DIR}btn_signup.png" alt="" draggable="false"></button>
@@ -73,6 +73,7 @@
     pass.type = show ? "text" : "password";
     e.currentTarget.setAttribute("aria-label", show ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน");
     e.currentTarget.classList.toggle("is-on", show);
+    e.currentTarget.querySelector("img").src = `assets/icons/web/${show ? "eye_open" : "eye_closed"}.png`;
   });
 
   function say(text, field) {
@@ -103,7 +104,9 @@
     chip.type = "button";
     chip.className = "profile-chip";
     chip.setAttribute("aria-label", `บัญชี ${me.name}`);
-    chip.innerHTML = `<span class="profile-pic is-${me.role}">${me.role === "doctor" ? "🩺" : esc(me.name.charAt(0).toUpperCase())}</span>
+    // profile picture: the player / doctor art (Drive "ผู้เล่น" / "หมอ")
+    const pic = `<img src="assets/icons/web/${me.role === "doctor" ? "doctor" : "player"}.png" alt="" draggable="false">`;
+    chip.innerHTML = `<span class="profile-pic is-${me.role}">${pic}</span>
       <span class="profile-txt"><b>${esc(me.name)}</b><small>${ROLE_TXT[me.role]}</small></span>`;
     document.getElementById("screen-home").append(chip);
 
@@ -111,7 +114,7 @@
     menu.className = "modal profile-modal";
     menu.hidden = true;
     menu.innerHTML = `<div class="modal-card" role="dialog" aria-modal="true" aria-label="บัญชีของฉัน">
-      <span class="profile-pic big is-${me.role}">${me.role === "doctor" ? "🩺" : esc(me.name.charAt(0).toUpperCase())}</span>
+      <span class="profile-pic big is-${me.role}">${pic}</span>
       <h2>${esc(me.name)}</h2>
       <p class="profile-mail">${esc(me.email)}</p>
       <p class="profile-role">สมัครเป็น <b>${ROLE_TXT[me.role]}</b></p>

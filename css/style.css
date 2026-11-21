@@ -179,7 +179,7 @@ img { -webkit-user-drag: none; }
   text-shadow: 0 0.3cqw 0.6cqw rgba(0, 0, 0, 0.5);
 }
 .lv-stars .on { color: #ffd23f; }
-.lv-lock { font-size: 5cqw; }
+.lv-lock { width: 5.6cqw; height: 5.6cqw; object-fit: contain; }
 .press-art.is-locked { filter: grayscale(0.85) brightness(0.75); }
 
 /* ---------- Toast ---------- */
@@ -1011,8 +1011,8 @@ button.rk-card { border: 0; cursor: pointer; }
 .howto-item, .howto-rec, .howto-fruit { position: absolute; object-fit: contain; }
 .howto-ring { position: absolute; border-radius: 50%; border: 1cqw solid #43c35a; box-shadow: 0 0 2cqw rgba(67, 195, 90, 0.9); }
 .howto-hand {
-  position: absolute; z-index: 3; transform: translate(-50%, 0);
-  font-size: 11cqw; line-height: 1; pointer-events: none;
+  position: absolute; z-index: 3; transform: translate(-40%, 0);   /* fingertip of the art is 40% across */
+  width: 12cqw; line-height: 0; pointer-events: none;
   filter: drop-shadow(0 1cqw 1cqw rgba(0, 0, 0, 0.35));
 }
 .howto-tap {
@@ -1069,7 +1069,7 @@ button.rk-card { border: 0; cursor: pointer; }
   border: 1cqw solid #5a2e0e; border-radius: 3.4cqw; background: #ecdfc0; color: #5a2e0e;
   font: 5cqw "Itim", sans-serif; cursor: pointer; transition: transform 140ms ease-out, background 140ms;
 }
-.login-role span { font-size: 7.4cqw; line-height: 1; }
+.login-role img { width: 9cqw; height: 9cqw; object-fit: contain; pointer-events: none; }
 .login-role.is-on { background: #e0612f; color: #fff; transform: scale(1.05); box-shadow: 0 0 0 1cqw #fdf0d5; }
 .login-input {
   position: absolute; border: 0; background: transparent; outline: none;
@@ -1079,7 +1079,8 @@ button.rk-card { border: 0; cursor: pointer; }
 }
 .login-input:focus { box-shadow: inset 0 0 0 0.6cqw rgba(224, 97, 47, 0.55); }
 .login-input.is-bad { box-shadow: inset 0 0 0 0.7cqw #e0412f; background: rgba(255, 120, 90, 0.12); }
-.login-eye { position: absolute; border: 0; background: none; font-size: 5cqw; cursor: pointer; opacity: 0.55; padding: 0; }
+.login-eye { position: absolute; border: 0; background: none; cursor: pointer; opacity: 0.7; padding: 0.6cqw; }
+.login-eye img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
 .login-eye.is-on { opacity: 1; }
 .login-hint { position: absolute; left: 6%; right: 6%; top: 44.8%; margin: 0; text-align: center; color: #fdf0d5; font-size: 3.4cqw;
   text-shadow: 0 0.3cqw 0.8cqw rgba(0, 0, 0, 0.7); }
@@ -1109,10 +1110,12 @@ button.rk-card { border: 0; cursor: pointer; }
 .profile-pic {
   flex: none; width: 8.4cqw; height: 8.4cqw; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
-  background: #e0612f; color: #fff; font-size: 4.6cqw; border: 0.6cqw solid #fff;
+  background: #f6e7c8; color: #fff; font-size: 4.6cqw; border: 0.6cqw solid #fff; overflow: hidden;
 }
-.profile-pic.is-doctor { background: #4f8f8a; font-size: 4.4cqw; }
+.profile-pic.is-doctor { background: #d9ece6; }
 .profile-pic.big { width: 22cqw; height: 22cqw; font-size: 11cqw; border-width: 1.2cqw; margin: 0 auto 2cqw; }
+.profile-pic img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; border-radius: 50%; pointer-events: none; }
+.howto-hand img { width: 100%; height: auto; display: block; }
 .profile-txt { min-width: 0; display: flex; flex-direction: column; line-height: 1.1; }
 .profile-txt b { font-weight: 400; font-size: 4.2cqw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .profile-txt small { font-size: 3cqw; color: #8a5a2e; }

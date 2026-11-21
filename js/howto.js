@@ -134,14 +134,14 @@
       timers.add(t);
     });
     const hand = el("div", "howto-hand", box);
-    hand.textContent = "👆";
+    hand.innerHTML = '<img src="assets/icons/web/hand.png" alt="" draggable="false">';
     // finger tip at (x%, y%) of the demo box
     const handTo = (x, y, ms = 600) => {
       hand.animate([{}, { left: x + "%", top: y + "%" }], { duration: ms, easing: "ease-in-out", fill: "forwards" });
       return wait(ms);
     };
     const tap = async () => {
-      hand.animate([{ transform: "translate(-50%, 0) scale(1)" }, { transform: "translate(-50%, 0) scale(0.82)" }, { transform: "translate(-50%, 0) scale(1)" }],
+      hand.animate([{ transform: "translate(-40%, 0) scale(1)" }, { transform: "translate(-40%, 0) scale(0.82)" }, { transform: "translate(-40%, 0) scale(1)" }],
         { duration: 320, easing: "ease-out" });
       const ring = el("span", "howto-tap", box, { left: hand.style.left, top: hand.style.top });
       const r = hand.getBoundingClientRect(), b = box.getBoundingClientRect();

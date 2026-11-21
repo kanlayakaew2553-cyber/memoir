@@ -242,7 +242,7 @@
           document.getElementById(`${cfg.id}-art-${n}`).classList.toggle("is-locked", locked);
           const s = document.getElementById(`${cfg.id}-stars-${n}`);
           s.innerHTML = locked
-            ? '<span class="lv-lock" aria-label="ล็อก">🔒</span>'
+            ? '<img class="lv-lock" src="assets/icons/web/lock.png" alt="ล็อก" draggable="false">'
             : [1, 2, 3].map((k) => `<img src="assets/ui/web/star_single.png" alt="" draggable="false" class="${k <= got ? "on" : ""}">`).join("");
           s.setAttribute("aria-label", locked ? "ล็อก" : `${got} ดาว`);
         }
