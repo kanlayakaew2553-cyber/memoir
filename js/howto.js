@@ -89,18 +89,20 @@
     show(game || ORDER[0]);
     go.focus({ preventScroll: true });
   }
-  function close() {
+  // start = true: "เริ่มเล่นเลย" (the level starts); false: X / Escape just closes the popup
+  function close(start) {
     modal.hidden = true;
     if (stopDemo) { stopDemo(); stopDemo = null; }
     demoBox.innerHTML = "";
     if (firstGame) markSeen(firstGame);
     const cb = onDone;
     onDone = null; firstGame = null;
-    if (cb) cb();
+    if (start === true && cb) cb();
   }
-  $(".howto-x").addEventListener("click", close);
-  go.addEventListener("click", close);
-  modal.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+  $(".howto-x").addEventListener("click", () => close(false));
+  go.addEventListener("click", () => close(true));
+  modal.addEventListener("keydown", (e) => { if (e.key === "Escape") close(false); });
+  modal.addEventListener("click", (e) => { if (e.target === modal) close(false); });   // tap outside = close
 
   // Before a level starts from the level map: level 1 always shows how to play first
   // (other levels never do); the level starts when the popup closes.

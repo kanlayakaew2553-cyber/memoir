@@ -120,6 +120,19 @@
   }
   function signOut() { rdel(SESSION_KEY); }
 
+  // Quick play (for presentations): a ready-made player account on this device, no password typing
+  const DEMO_EMAIL = "demo@memoir.app";
+  function enterDemo() {
+    const all = accounts();
+    if (!all[DEMO_EMAIL]) {
+      const s = salt();
+      all[DEMO_EMAIL] = { email: DEMO_EMAIL, role: "player", salt: s, hash: sha256(s + salt()), created: Date.now(), demo: true };
+      rset(ACCOUNTS_KEY, JSON.stringify(all));
+    }
+    rset(SESSION_KEY, DEMO_EMAIL);
+    return { ok: true };
+  }
+
   // For the doctor's page: player accounts on this device and their play history (read only)
   function players() {
     return Object.values(accounts()).filter((a) => a.role === "player")
@@ -131,6 +144,6 @@
 
   window.MemoirAccount = {
     current: user ? { email: user.email, role: user.role, name: user.email.split("@")[0] } : null,
-    signUp, signIn, signOut, players, historyOf, MIN_PASS,
+    signUp, signIn, signOut, enterDemo, players, historyOf, MIN_PASS,
   };
 })();

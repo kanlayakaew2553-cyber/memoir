@@ -48,6 +48,7 @@
         <img src="${DIR}btn_signin.png" alt="" draggable="false"></button>
       <p class="login-sub"><span>สมัครใหม่</span><span>มีบัญชีแล้ว</span></p>
       <p class="login-msg" role="alert"></p>
+      <button type="button" class="login-quick" data-act="quick">เข้าเล่นเลย (ไม่ต้องสมัคร) ›</button>
     </form>`;
   document.getElementById("screen-placeholder").before(screen);
 
@@ -94,6 +95,8 @@
   }
   form.querySelector('[data-act="signup"]').addEventListener("click", () => done(ACC.signUp(email.value, pass.value, role), "สมัครสำเร็จ ยินดีต้อนรับ!"));
   form.addEventListener("submit", (e) => { e.preventDefault(); done(ACC.signIn(email.value, pass.value), "เข้าสู่ระบบแล้ว"); });
+  // quick play for presentations: straight in with the demo player account
+  form.querySelector('[data-act="quick"]').addEventListener("click", () => done(ACC.enterDemo(), "เข้าเล่นแบบทดลอง"));
 
   // =====================================================================
   // Profile chip on home (top left, next to hearts and coins) + account menu

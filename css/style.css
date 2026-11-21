@@ -63,21 +63,7 @@ img { -webkit-user-drag: none; }
   pointer-events: none;
 }
 
-/* Phone turned sideways (short screen in landscape): ask to rotate. iPads stay playable. */
-#rotate-hint {
-  display: none;
-  position: fixed; inset: 0; z-index: 100;
-  align-items: center; justify-content: center; flex-direction: column; gap: 3vmin;
-  background: #1b1b1b; color: #f6f1cf; text-align: center;
-  font-family: "Itim", "Sarabun", sans-serif; font-size: 6vmin;
-}
-#rotate-hint small { font-size: 4vmin; opacity: 0.75; }
-.rotate-icon { font-size: 16vmin; animation: rotate-phone 2s ease-in-out infinite; }
-@keyframes rotate-phone { 0%, 30% { rotate: 90deg; } 60%, 100% { rotate: 0deg; } }
-@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
-  #rotate-hint { display: flex; }
-}
-
+/* Portrait and landscape both work: the 9:16 game stays centred, the backdrop fills the sides. */
 .screen {
   position: absolute;
   inset: 0;
@@ -205,7 +191,7 @@ img { -webkit-user-drag: none; }
 .toast.is-bad { background: rgba(190, 30, 30, 0.95); }
 
 /* ---------- Memory Decor: gameplay ---------- */
-.decor-items { position: absolute; inset: 0; }
+.decor-items { position: absolute; inset: 0; z-index: 1; }   /* own layer: a grown item (z-index 50) stays under the popups */
 .decor-item {
   position: absolute;
   pointer-events: none;            /* taps are resolved in js by the item's pixels */
@@ -1097,6 +1083,15 @@ button.rk-card { border: 0; cursor: pointer; }
   opacity: 0; transform: translateY(1cqh); transition: opacity 200ms, transform 200ms; pointer-events: none;
 }
 .login-msg.is-shown { opacity: 1; transform: none; }
+/* small quick-play link at the bottom (for presentations) */
+.login-quick {
+  position: absolute; left: 50%; bottom: 3%; translate: -50% 0;
+  border: 0.5cqw solid rgba(253, 240, 213, 0.7); border-radius: 99px; padding: 1.4cqw 4cqw;
+  background: rgba(40, 20, 8, 0.55); color: #fdf0d5; cursor: pointer;
+  font: 3.8cqw "Itim", "Sarabun", sans-serif; white-space: nowrap;
+}
+.login-quick:active { transform: scale(0.96); }
+@media (hover: hover) and (pointer: fine) { .login-quick:hover { background: rgba(224, 97, 47, 0.85); } }
 
 /* profile chip on home: picture + name, left of the hearts / coins */
 .profile-chip {

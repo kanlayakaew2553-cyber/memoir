@@ -1,4 +1,4 @@
-/* อันดับ — the doctor's dashboard (the player side comes later).
+/* ผลการประเมิน (was อันดับ) — the doctor's dashboard (the player side comes later).
  *
  * Tabs (buttons on the pier at the bottom):
  *   ข้อมูลคนไข้ – list of patients; tap one → spider chart of their skills
@@ -165,7 +165,7 @@
   const role = me && me.role === "doctor" ? "doctor" : "patient";
 
   // Player side: not designed yet
-  const playerPage = el("div", "rk-player", '<div class="rk-card rk-soon"><h3>หน้าอันดับฝั่งผู้เล่น</h3><p>รอคำอธิบายการออกแบบ</p></div>');
+  const playerPage = el("div", "rk-player", '<div class="rk-card rk-soon"><h3>หน้าผลการประเมินฝั่งผู้เล่น</h3><p>รอคำอธิบายการออกแบบ</p></div>');
   screen.append(playerPage);
 
   // =====================================================================
