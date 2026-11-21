@@ -14,7 +14,8 @@
 
   const ACCOUNTS_KEY = "memoir.accounts.v1";   // shared: all accounts on this device
   const SESSION_KEY = "memoir.session.v1";     // shared: who is signed in
-  const SHARED = new Set([ACCOUNTS_KEY, SESSION_KEY]);
+  const MESSAGES_KEY = "memoir.messages.v1";   // shared: chat between player and doctor accounts
+  const SHARED = new Set([ACCOUNTS_KEY, SESSION_KEY, MESSAGES_KEY]);
   const LS = window.localStorage;
   const raw = {
     get: Storage.prototype.getItem, set: Storage.prototype.setItem, remove: Storage.prototype.removeItem,
@@ -141,9 +142,27 @@
   function historyOf(email) {
     try { return JSON.parse(rget(space(normEmail(email)) + "history.v1")) || []; } catch (e) { return []; }
   }
+  // For the player's page: doctor accounts on this device (their chat contacts)
+  function doctors() {
+    return Object.values(accounts()).filter((a) => a.role === "doctor")
+      .map((a) => ({ email: a.email, name: a.email.split("@")[0] }));
+  }
+
+  // Messages between a doctor and a player account (both can read them):
+  //   { "doctor@x|player@y": [{ by: email, text, t }] }
+  const pairKey = (doctorEmail, playerEmail) => `${normEmail(doctorEmail)}|${normEmail(playerEmail)}`;
+  function readMessages() { try { return JSON.parse(rget(MESSAGES_KEY)) || {}; } catch (e) { return {}; } }
+  function messages(doctorEmail, playerEmail) { return readMessages()[pairKey(doctorEmail, playerEmail)] || []; }
+  function postMessage(doctorEmail, playerEmail, text) {
+    const all = readMessages(), k = pairKey(doctorEmail, playerEmail);
+    const m = { by: user ? user.email : "", text: String(text).slice(0, 300), t: Date.now() };
+    (all[k] = all[k] || []).push(m);
+    rset(MESSAGES_KEY, JSON.stringify(all));
+    return m;
+  }
 
   window.MemoirAccount = {
     current: user ? { email: user.email, role: user.role, name: user.email.split("@")[0] } : null,
-    signUp, signIn, signOut, enterDemo, players, historyOf, MIN_PASS,
+    signUp, signIn, signOut, enterDemo, players, doctors, historyOf, messages, postMessage, MIN_PASS,
   };
 })();

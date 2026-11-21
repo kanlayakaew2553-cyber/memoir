@@ -164,13 +164,12 @@
   const me = window.MemoirAccount && window.MemoirAccount.current;
   const role = me && me.role === "doctor" ? "doctor" : "patient";
 
-  // Player side: not designed yet
-  const playerPage = el("div", "rk-player", '<div class="rk-card rk-soon"><h3>หน้าผลการประเมินฝั่งผู้เล่น</h3><p>รอคำอธิบายการออกแบบ</p></div>');
-  screen.append(playerPage);
-
   // =====================================================================
   // Pages
+  //   doctor: ข้อมูลคนไข้ / MENU (dashboard) / CHATBOX (patients)
+  //   player: MENU (my own spider chart) / CHATBOX (my doctor); no patient list
   // =====================================================================
+  const doctorView = role === "doctor";
   const page = {
     patient: el("div", "rk-page"),
     menu: el("div", "rk-page"),
@@ -184,18 +183,25 @@
   }
 
   function render() {
-    const doctor = role === "doctor";
-    pages.hidden = !doctor;
-    playerPage.hidden = doctor;
-    Object.values(tabBtns).forEach((b) => { b.hidden = !doctor; });
-    if (!doctor) return;
+    tabBtns.patient.hidden = !doctorView;
     Object.entries(page).forEach(([k, p]) => { p.hidden = k !== tab; });
     Object.entries(tabBtns).forEach(([k, b]) => b.classList.toggle("is-current", k === tab));
-    if (tab === "menu") renderMenu();
-    if (tab === "patient") renderPatients();
+    if (tab === "menu") (doctorView ? renderMenu : renderMySkills)();
+    if (tab === "patient" && doctorView) renderPatients();
     if (tab === "chat") renderChat();
   }
   M.onShow("screen-rank", render);
+
+  // ---------- Player: my own results ----------
+  const MY = { id: "me", name: me ? me.name : "ผู้เล่น", short: "", color: "#e0612f", records: () => M.history.list };
+  function renderMySkills() {
+    const p = page.menu;
+    p.innerHTML = "";
+    const card = place(el("div", "rk-card rk-my"), BOX.chat);
+    card.append(el("h3", "rk-my-title", "ผลการประเมินของฉัน"));
+    skillsContent(card, MY, "ยังไม่มีข้อมูลการเล่นเกม<br>เล่นเกมไปสักพัก กราฟทักษะของคุณจะแสดงที่นี่");
+    p.append(card);
+  }
 
   // ---------- MENU ----------
   function renderMenu() {
@@ -250,11 +256,11 @@
     const cm = place(el("div", "rk-card rk-chat-mini"), BOX.chatMini);
     cm.innerHTML = "<h3>แชท</h3>";
     CONTACTS.forEach((c) => {
-      const msgs = chatData[c.id] || [];
+      const msgs = messagesWith(c);
       const lastMsg = msgs[msgs.length - 1];
       const b = el("button", "rk-chat-item");
       b.type = "button";
-      b.innerHTML = `<span class="rk-dot" style="background:${c.color}">${c.short}</span>
+      b.innerHTML = `${avatarHTML(c)}
         <span class="rk-chat-txt"><b>${esc(c.name)}</b><small>${lastMsg ? esc(lastMsg.text) : "เริ่มคุยกันเลย"}</small></span>`;
       b.addEventListener("click", () => { chatWith = c.id; showTab("chat"); });
       cm.append(b);
@@ -311,13 +317,17 @@
 
   // ---------- Spider chart of one patient ----------
   function openSkills(pt) {
-    const s = statsOf(pt);
     const card = openSheet("rk-skills");
     card.append(closeBtn());
     card.append(el("h2", null, esc(pt.name)));
+    skillsContent(card, pt, "ยังไม่มีข้อมูลการเล่นเกม<br>เมื่อคนไข้เริ่มเล่น กราฟทักษะจะแสดงที่นี่");
+  }
+  // spider chart + best / weakest skill + per-game summary (doctor popup and player page)
+  function skillsContent(card, pt, emptyMsg) {
+    const s = statsOf(pt);
     const known = s.skills.filter((k) => k.value != null);
     if (!known.length) {
-      card.append(el("p", "rk-muted rk-center", "ยังไม่มีข้อมูลการเล่นเกม<br>เมื่อคนไข้เริ่มเล่น กราฟทักษะจะแสดงที่นี่"));
+      card.append(el("p", "rk-muted rk-center", emptyMsg));
       return;
     }
     card.append(radarSVG(s.skills, pt.color));
@@ -366,20 +376,51 @@
   }
 
   // =====================================================================
-  // Chat (2 sample contacts; their replies are simulated)
+  // Chat
+  //   doctor ↔ player accounts on this device: real messages both sides can read
+  //     (Memoir.account.messages / postMessage)
+  //   sample contacts: patients for the doctor, a doctor for the player; their replies are simulated
   // =====================================================================
   const CHAT_KEY = "memoir.chat.v1";
-  const CONTACTS = [
+  const SAMPLE_PATIENTS = [
     { id: "p1", name: "คุณสมศรี ใจดี", short: "ส", color: "#4f8f8a",
       replies: ["ค่ะคุณหมอ วันนี้เล่นเกมไปแล้วนะคะ", "ขอบคุณค่ะ จะพยายามเล่นทุกวันค่ะ", "เกมดนตรีสนุกมากเลยค่ะ", "ได้ค่ะ แล้วเจอกันวันนัดนะคะ"] },
     { id: "p2", name: "คุณประยูร มีสุข", short: "ป", color: "#8a5bb0",
       replies: ["ครับหมอ", "เมื่อวานลืมเล่นไปครับ วันนี้จะเล่นครับ", "เกมตลาดยากนิดหน่อยครับ แต่สนุกดี", "ขอบคุณครับหมอ"] },
   ];
-  let chatData = load(CHAT_KEY, null) || {
-    p1: [{ from: "them", text: "สวัสดีค่ะคุณหมอ", t: Date.now() - 36e5 }],
-    p2: [{ from: "them", text: "สวัสดีครับหมอ", t: Date.now() - 72e5 }],
-  };
-  let chatWith = "p1";
+  const SAMPLE_DOCTOR = { id: "d0", name: "คุณหมอใจดี (ตัวอย่าง)", short: "หมอ", color: "#4f8f8a", pic: "doctor",
+    replies: ["ได้รับข้อความแล้วนะคะ เก่งมากที่เล่นเกมสม่ำเสมอค่ะ", "ลองเล่นเกมดนตรีวันละ 2-3 ด่านนะคะ ช่วยเรื่องความจำได้ดี",
+              "ถ้ารู้สึกเหนื่อย พักสายตาก่อนได้เลยค่ะ", "แล้วเจอกันวันนัดนะคะ"] };
+  // contacts for this account (real accounts first)
+  const CONTACTS = (() => {
+    const acc = window.MemoirAccount;
+    if (doctorView) {
+      const real = (acc ? acc.players() : []).map((p, i) => ({ id: "acc:" + p.email, email: p.email, real: true,
+        name: p.name, short: p.name.charAt(0).toUpperCase(), color: PAL[i % PAL.length], pic: "player" }));
+      return [...real.slice(0, 3), ...SAMPLE_PATIENTS];
+    }
+    const docs = (acc && me ? acc.doctors() : []).map((d) => ({ id: "acc:" + d.email, email: d.email, real: true,
+      name: "หมอ " + d.name, short: "หมอ", color: "#4f8f8a", pic: "doctor" }));
+    return docs.length ? docs.slice(0, 2) : [SAMPLE_DOCTOR];
+  })();
+  let chatData = load(CHAT_KEY, null) || (doctorView
+    ? { p1: [{ from: "them", text: "สวัสดีค่ะคุณหมอ", t: Date.now() - 36e5 }],
+        p2: [{ from: "them", text: "สวัสดีครับหมอ", t: Date.now() - 72e5 }] }
+    : { d0: [{ from: "them", text: "สวัสดีค่ะ มีอะไรสอบถามคุณหมอได้เลยนะคะ", t: Date.now() - 36e5 }] });
+  let chatWith = CONTACTS[0].id;
+
+  // messages with one contact, as { from: "me" | "them", text, t }
+  function messagesWith(c) {
+    if (!c.real) return chatData[c.id] || [];
+    const acc = window.MemoirAccount;
+    const list = doctorView ? acc.messages(me.email, c.email) : acc.messages(c.email, me.email);
+    return list.map((m) => ({ from: m.by === me.email ? "me" : "them", text: m.text, t: m.t }));
+  }
+  function avatarHTML(c) {
+    return c.pic
+      ? `<span class="rk-dot has-pic" style="background:${c.color}"><img src="assets/icons/web/${c.pic}.png" alt=""></span>`
+      : `<span class="rk-dot" style="background:${c.color}">${c.short}</span>`;
+  }
 
   function renderChat() {
     const p = page.chat;
@@ -388,14 +429,17 @@
     const heads = el("div", "rk-chat-heads");
     CONTACTS.forEach((c) => {
       const b = el("button", "rk-chat-head" + (c.id === chatWith ? " is-on" : ""),
-        `<span class="rk-dot" style="background:${c.color}">${c.short}</span><span>${esc(c.name)}</span>`);
+        `${avatarHTML(c)}<span>${esc(c.name)}</span>`);
       b.type = "button";
       b.addEventListener("click", () => { chatWith = c.id; renderChat(); });
       heads.append(b);
     });
     const log = el("div", "rk-chat-log");
     log.setAttribute("aria-live", "polite");
-    (chatData[chatWith] || []).forEach((m) => log.append(bubble(m)));
+    const cur = CONTACTS.find((c) => c.id === chatWith) || CONTACTS[0];
+    const msgs = messagesWith(cur);
+    if (!msgs.length) log.append(el("p", "rk-muted rk-center rk-chat-empty", `เริ่มคุยกับ ${esc(cur.name)} ได้เลย`));
+    msgs.forEach((m) => log.append(bubble(m)));
     const form = el("form", "rk-chat-form",
       '<input type="text" maxlength="300" placeholder="พิมพ์ข้อความ..." aria-label="ข้อความ"><button type="submit">ส่ง</button>');
     form.addEventListener("submit", (e) => {
@@ -415,14 +459,23 @@
     return el("div", "rk-bubble " + (m.from === "me" ? "me" : "them"), `${esc(m.text)}<time>${pad2(d.getHours())}:${pad2(d.getMinutes())}</time>`);
   }
   function send(id, text, log) {
+    const c = CONTACTS.find((x) => x.id === id);
+    log.querySelectorAll(".rk-chat-empty").forEach((n) => n.remove());
+    if (c.real) {
+      // a real account: saved where the other side reads it (they see it when they open the chat)
+      const acc = window.MemoirAccount;
+      if (doctorView) acc.postMessage(me.email, c.email, text); else acc.postMessage(c.email, me.email, text);
+      log.append(bubble({ from: "me", text, t: Date.now() }));
+      log.scrollTop = log.scrollHeight;
+      return;
+    }
     const list = chatData[id] = chatData[id] || [];
     const m = { from: "me", text, t: Date.now() };
     list.push(m);
     save(CHAT_KEY, chatData);
     log.append(bubble(m));
     log.scrollTop = log.scrollHeight;
-    // simulated reply
-    const c = CONTACTS.find((x) => x.id === id);
+    // sample contact: simulated reply
     const typing = el("div", "rk-bubble them rk-typing", "<i></i><i></i><i></i>");
     setTimeout(() => { if (log.isConnected) { log.append(typing); log.scrollTop = log.scrollHeight; } }, 500);
     setTimeout(() => {
