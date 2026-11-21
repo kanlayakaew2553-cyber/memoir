@@ -152,16 +152,36 @@
     const next = uiBtn("win_btn_next", pop, "ด่านต่อไป", onNext);
     uiBtn("win_btn_replay", pop, "เล่นอีกครั้ง", onReplay);
     uiBtn("win_btn_levels", pop, "เลือกด่าน", onLevels);
+    let earned = 3, timers = [];
     return {
       el: pop,
       // Until the empty-star art arrives, only the earned stars are shown (centred)
       fill({ stars: n, seconds, misses, coins, hasNext }) {
+        earned = n;
         showStars(stars, n, true);
         timeNum.textContent = seconds;
         noMiss.hidden = misses > 0;
         fewMiss.hidden = misses === 0;
         coinsNum.textContent = coins;
         next.hidden = !hasNext;
+      },
+      // Open the popup: win sound, and each earned star pops in on one of its chimes
+      show() {
+        timers.forEach(clearTimeout); timers = [];
+        pop.hidden = false;
+        const snd = window.Memoir.sound;
+        const times = (snd && snd.STAR_TIMES) || [0.4, 0.9, 1.4];
+        if (snd) snd.play("win");
+        const n = earned;
+        stars.style.translate = `${(3 - n) * 100 / 6}% 0`;   // final, centred place for n stars
+        stars.style.clipPath = "inset(0 100% 0 0)";           // none yet
+        for (let k = 1; k <= n; k++) {
+          timers.push(setTimeout(() => {
+            if (pop.hidden) return;
+            stars.style.clipPath = k >= 3 ? "none" : `inset(0 ${100 - k * 100 / 3}% 0 0)`;
+            stars.animate([{ scale: "1" }, { scale: "1.18", offset: 0.35 }, { scale: "1" }], { duration: 380, easing: "ease-out" });
+          }, times[k - 1] * 1000));
+        }
       },
     };
   }

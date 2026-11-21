@@ -394,10 +394,11 @@
     win$.fill({ stars, seconds: used, misses: S.misses, coins, hasNext: S.level < CONFIG.maxLevel });
 
     const myState = S;
-    setTimeout(() => { if (S === myState) winPop.hidden = false; }, 900);
+    setTimeout(() => { if (S === myState) win$.show(); }, 900);
   }
 
   function lose() {
+    if (window.Memoir.sound) window.Memoir.sound.play("lose");   // game-over sound
     S.phase = "done";
     cancelAnimationFrame(rafId);
     wrongMsg.classList.remove("is-shown");

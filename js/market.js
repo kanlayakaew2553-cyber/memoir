@@ -736,10 +736,11 @@
       coins: CONFIG.coinRewardByStars[stars], hasNext: S.level < CONFIG.maxLevel,
     });
     const my = S;
-    setTimeout(() => { if (S === my) { hint.textContent = ""; win$.el.hidden = false; } }, 1100);
+    setTimeout(() => { if (S === my) { hint.textContent = ""; win$.show(); } }, 1100);
   }
 
   function lose() {
+    if (window.Memoir.sound) window.Memoir.sound.play("lose");   // game-over sound
     S.phase = "done";
     S.held = null;
     nextBox.hidden = true;

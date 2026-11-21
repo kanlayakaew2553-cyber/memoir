@@ -325,10 +325,11 @@
       coins: CONFIG.coinRewardByStars[stars], hasNext: S.level < CONFIG.maxLevel,
     });
     const myState = S;
-    setTimeout(() => { if (S === myState) win$.el.hidden = false; }, 900);
+    setTimeout(() => { if (S === myState) win$.show(); }, 900);
   }
 
   function lose(reason) {
+    if (window.Memoir.sound) window.Memoir.sound.play("lose");   // game-over sound
     S.phase = "done";
     timer.hidden = true;
     els.records.classList.add("is-locked");
