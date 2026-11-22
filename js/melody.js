@@ -68,6 +68,8 @@
     if (audio.state === "suspended") audio.resume();
     return audio;
   }
+  // master volume from Settings (0–1)
+  const vol = () => (window.Memoir.sound ? window.Memoir.sound.volume : 1);
   function freq(note) {
     const m = /^([A-G])(#?)(\d)$/.exec(note);
     if (!m) return 440;
@@ -79,7 +81,7 @@
     const ac = ctx(), t = ac.currentTime, f = freq(note);
     const out = ac.createGain();
     out.gain.setValueAtTime(0.0001, t);
-    out.gain.exponentialRampToValueAtTime(0.35, t + 0.015);
+    out.gain.exponentialRampToValueAtTime(Math.max(0.0002, 0.35 * vol()), t + 0.015);
     out.gain.exponentialRampToValueAtTime(0.0001, t + seconds + 0.5);
     out.connect(ac.destination);
     [[1, "triangle", 1], [2, "sine", 0.35], [3, "sine", 0.12]].forEach(([mul, type, vol]) => {
@@ -96,7 +98,7 @@
       const o = ac.createOscillator(), g = ac.createGain();
       o.type = "square"; o.frequency.value = i ? 150 : 200;
       g.gain.setValueAtTime(0.0001, t + d);
-      g.gain.exponentialRampToValueAtTime(0.12, t + d + 0.02);
+      g.gain.exponentialRampToValueAtTime(Math.max(0.0002, 0.12 * vol()), t + d + 0.02);
       g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.25);
       o.connect(g); g.connect(ac.destination);
       o.start(t + d); o.stop(t + d + 0.3);

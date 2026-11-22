@@ -34,7 +34,8 @@
     if (a && buffers[name]) {
       const src = a.createBufferSource(), g = a.createGain();
       src.buffer = buffers[name];
-      g.gain.value = VOLUME[name] ?? 1;
+      g.gain.value = (VOLUME[name] ?? 1) * master;
+      if (master <= 0) return;
       src.connect(g); g.connect(a.destination);
       src.start();
       return;
@@ -43,7 +44,8 @@
     try {
       const el = (fallback[name] = fallback[name] || new Audio(FILES[name]));
       const node = el.paused ? el : el.cloneNode();
-      node.volume = VOLUME[name] ?? 1;
+      node.volume = Math.min(1, (VOLUME[name] ?? 1) * master);
+      if (master <= 0) return;
       node.currentTime = 0;
       node.play().catch(() => {});
     } catch (e) { /* no sound */ }
@@ -65,5 +67,11 @@
   // Unlock sound on every finished tap / click / key press (some phones need it more than once)
   ["pointerup", "touchend", "click", "keydown"].forEach((t) => document.addEventListener(t, () => ctx(), { capture: true, passive: true }));
 
-  window.Memoir.sound = { play, STAR_TIMES };
+  // Master volume 0–1 (Settings). Melody notes and Market pops read it too.
+  let master = 1;
+  window.Memoir.sound = {
+    play, STAR_TIMES,
+    get volume() { return master; },
+    setVolume(v) { master = Math.max(0, Math.min(1, v)); },
+  };
 })();

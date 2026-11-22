@@ -708,7 +708,7 @@
         o.frequency.setValueAtTime(i ? 880 : 620, t + d);
         o.frequency.exponentialRampToValueAtTime(i ? 1320 : 980, t + d + 0.12);
         gn.gain.setValueAtTime(0.0001, t + d);
-        gn.gain.exponentialRampToValueAtTime(0.25, t + d + 0.02);
+        gn.gain.exponentialRampToValueAtTime(Math.max(0.0002, 0.25 * ((window.Memoir.sound && window.Memoir.sound.volume) ?? 1)), t + d + 0.02);
         gn.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.25);
         o.connect(gn); gn.connect(a.destination);
         o.start(t + d); o.stop(t + d + 0.3);
