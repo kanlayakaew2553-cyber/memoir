@@ -136,7 +136,7 @@
   }
   // step text under the practice box: "ขั้นที่ 1/3" + what to do
   function sayStep(n, of, text) {
-    say.innerHTML = `<b>ขั้นที่ ${n}/${of}</b><span></span>`;
+    say.innerHTML = `<b>รอบที่ ${n}/${of}</b><span></span>`;
     say.querySelector("span").textContent = text;
     say.animate([{ transform: "scale(0.94)", opacity: 0.4 }, { transform: "none", opacity: 1 }], { duration: 260, easing: "ease-out" });
   }
@@ -337,7 +337,12 @@
   }
 
   // =====================================================================
-  // ทดลองเล่น (practice): the finger shows each step, then the player does it.
+  // ทดลองเล่น (practice). Every round goes in the same order, slowly, so it is easy to follow:
+  //   1. an explanation card covers the play area (stays long enough to read; tap to skip)
+  //   2. the task appears (records light up / something in the room changes / a fruit appears)
+  //   3. the finger does it as an example
+  //   4. "ตาคุณแล้ว": the same kind of task again and the player does it
+  //      (if they wait or tap wrong, the finger points at the answer)
   // Nothing is scored, no hearts are used. When finished: finish() shows "เล่นเลย".
   // =====================================================================
   function practice(box, script, finish) {
@@ -348,6 +353,12 @@
       const t = setTimeout(() => { timers.delete(t); alive ? res() : rej(STOP); }, ms);
       timers.add(t);
     });
+    // fn() after ms unless cancelled first
+    const later = (ms, fn) => {
+      const t = setTimeout(() => { timers.delete(t); if (alive) fn(); }, ms);
+      timers.add(t);
+      return { cancel: () => { clearTimeout(t); timers.delete(t); } };
+    };
     // resolves with the tapped target; onMiss(e) for a tap anywhere else in the box
     const waitTap = (targets, onMiss) => new Promise((res, rej) => {
       const h = (e) => {
@@ -359,9 +370,39 @@
       box.addEventListener("pointerdown", h);
       cleanups.add(cancel);
     });
+    // explanation card over the play area; reading time grows with the text; tap = next
+    const explain = (text, minMs = 4000) => new Promise((res, rej) => {
+      const card = el("div", "howto-explain", box.closest(".howto-card") || box);
+      card.innerHTML = `<p></p><i class="howto-explain-bar"><b></b></i><small>แตะเพื่อไปต่อ</small>`;
+      card.querySelector("p").textContent = text;
+      const ms = Math.max(minMs, text.length * 85);
+      card.querySelector(".howto-explain-bar b").animate([{ width: "100%" }, { width: "0%" }], { duration: ms, fill: "forwards" });
+      let t = null;
+      const done = () => { clearTimeout(t); timers.delete(t); cleanups.delete(cancel); card.remove(); alive ? res() : rej(STOP); };
+      const cancel = () => { clearTimeout(t); card.remove(); rej(STOP); };
+      t = setTimeout(done, ms); timers.add(t);
+      card.addEventListener("pointerdown", (e) => { e.stopPropagation(); done(); }, { once: true });
+      cleanups.add(cancel);
+    });
     const shake = (e) => e.animate([{ translate: "0 0" }, { translate: "-6% 0" }, { translate: "6% 0" }, { translate: "-4% 0" }, { translate: "0 0" }], { duration: 380 });
-    const api = { wait, waitTap, shake, sayStep, caption: (t) => caption(box, t), alive: () => alive, cleanups, ...makeHand(box, wait) };
+    const api = {
+      wait, later, waitTap, explain, shake, alive: () => alive, cleanups,
+      caption: (t) => caption(box, t),
+      // text under the play area: which round / what is happening now
+      say: (round, of, text) => sayStep(round, of, text),
+      ...makeHand(box, wait),
+    };
     api.hand.style.opacity = 0;
+    // finger comes in from below, taps at (x, y), stays there
+    api.fingerTap = async (x, y) => {
+      if (getComputedStyle(api.hand).opacity === "0") {
+        api.hand.getAnimations().forEach((a) => a.cancel());
+        Object.assign(api.hand.style, { left: x + "%", top: "112%", opacity: 1 });
+      }
+      await api.handTo(x, y, 750);
+      await api.tap();
+    };
+    api.fingerAway = async () => { await api.handTo(parseFloat(api.hand.style.left) || 50, 112, 450); api.unpoint(); };
     script(api).then(() => { if (alive) finish(); }, (e) => { if (e !== STOP) throw e; });
     return () => {
       alive = false;
@@ -372,7 +413,7 @@
   }
 
   const PRACTICE = {
-    // ---------- Melody: watch 1 record → tap it → watch 2 → tap both in order ----------
+    // ---------- Melody: round 1 = 1 record, round 2 = 2 records in order ----------
     melody(box, finish) {
       box.classList.add("is-melody", "is-play");
       const NOTES = ["C4", "D4", "E4", "F4", "G4", "A4"];
@@ -387,56 +428,75 @@
         recs[i].animate([{ filter: "brightness(1)" }, { filter: "brightness(1.6) drop-shadow(0 0 6px #ffe680)", offset: 0.2 }, { filter: "brightness(1.6) drop-shadow(0 0 6px #ffe680)", offset: 0.8 }, { filter: "brightness(1)" }], { duration: ms });
         try { if (mel.playNote) mel.playNote(NOTES[i], ms / 1000 * 0.8); } catch (e) { /* no sound */ }
       };
-      const wrong = (e) => {
-        const r = recs.find((x) => x === e.target);
-        if (r) shake(r);
-        try { if (mel.playWrong) mel.playWrong(); } catch (err) { /* no sound */ }
-      };
-      let shake;
+      const ROUNDS = [
+        { seq: [1], intro: "แผ่นเสียงจะสว่างขึ้นพร้อมเสียงเพลง\nจำไว้ว่าแผ่นไหนสว่าง" },
+        { seq: [1, 3], intro: "รอบต่อไปเพลงจะยาวขึ้น 1 โน้ต\nจำแผ่นที่สว่างทั้ง 2 แผ่น ตามลำดับ" },
+      ];
+      const of = ROUNDS.length;
+
       return practice(box, async (p) => {
-        shake = p.shake;
-        // step 1: watch and listen
-        p.sayStep(1, 3, "ดูและฟัง แผ่นเสียงจะสว่างขึ้นพร้อมเสียงเพลง");
-        p.caption("ดูให้ดีนะ");
-        await p.wait(1200);
-        light(1, 1100); await p.wait(1700);
-        // step 2: the finger shows, then the player taps the same record
-        p.sayStep(2, 3, "แตะแผ่นเสียงที่สว่างเมื่อกี้ ตามที่นิ้วชี้");
-        p.caption("ถึงตาคุณ แตะเลย");
-        p.point(...center(1));
-        await p.waitTap([recs[1]], (e) => { wrong(e); p.caption("ยังไม่ใช่ แตะแผ่นที่นิ้วชี้นะ"); });
-        p.unpoint(); light(1, 600);
-        p.caption("ถูกต้อง!");
-        await p.wait(1400);
-        // step 3: two records; the player remembers the order alone (the finger helps after a mistake)
-        p.sayStep(3, 3, "เพลงยาวขึ้นทีละโน้ต จำ 2 แผ่นแล้วแตะตามลำดับ (เกมจริงมีเวลา 10 วินาที)");
-        const seq = [1, 3];
-        let help = false;
-        for (;;) {
-          p.caption("ดูให้ดีนะ");
-          await p.wait(900);
-          for (const i of seq) { light(i, 1000); await p.wait(1400); }
-          p.caption("ถึงตาคุณ แตะตามลำดับ");
-          let ok = true;
+        const showTask = async (seq) => {
+          p.caption("ดูและฟังให้ดี");
+          await p.wait(800);
+          for (const i of seq) { light(i, 1100); await p.wait(1600); }
+        };
+        for (let r = 0; r < of; r++) {
+          const { seq, intro } = ROUNDS[r];
+          // 1. explanation
+          p.say(r + 1, of, "อ่านคำอธิบาย");
+          p.caption("");
+          await p.explain(intro);
+          // 2. the task
+          p.say(r + 1, of, "ดูโจทย์: แผ่นเสียงที่สว่างขึ้น");
+          await showTask(seq);
+          // 3. the finger shows the answer
+          p.say(r + 1, of, "ดูตัวอย่าง: นิ้วแตะแผ่นเสียงตามลำดับที่สว่าง");
+          p.caption("ดูนิ้วแตะให้ดูนะ");
           for (const i of seq) {
-            if (help) p.point(...center(i));
-            const hit = await p.waitTap(recs);
-            p.unpoint();
-            if (hit !== recs[i]) { wrong({ target: hit }); ok = false; break; }
+            await p.fingerTap(...center(i));
             light(i, 600);
-            await p.wait(300);
+            await p.wait(650);
           }
-          if (ok) break;
-          help = true;
-          p.caption("ไม่เป็นไร ดูอีกครั้งนะ นิ้วจะช่วยชี้");
+          await p.fingerAway();
+          p.caption("แบบนี้เลย!");
+          await p.wait(1000);
+          // 4. the player's turn: the same task again
+          p.say(r + 1, of, "ลองเอง: แตะแผ่นเสียงตามลำดับที่สว่าง");
+          await p.explain(r === of - 1
+            ? "ตาคุณแล้ว!\nดูโจทย์อีกครั้ง แล้วแตะตามลำดับ\n(เกมจริงต้องแตะให้ทันใน 10 วินาที)"
+            : "ตาคุณแล้ว!\nดูโจทย์อีกครั้ง แล้วแตะแผ่นที่สว่าง");
+          p.say(r + 1, of, "ลองเอง: แตะแผ่นเสียงตามลำดับที่สว่าง");
+          await showTask(seq);
+          let help = false;
+          for (;;) {
+            p.caption("ถึงตาคุณ แตะเลย");
+            let ok = true;
+            for (const i of seq) {
+              if (help) p.point(...center(i));
+              const hint = p.later(5000, () => { p.point(...center(i)); p.caption("แตะแผ่นที่นิ้วชี้นะ"); });
+              const hit = await p.waitTap(recs);
+              hint.cancel(); p.unpoint();
+              if (hit !== recs[i]) {
+                p.shake(hit);
+                try { if (mel.playWrong) mel.playWrong(); } catch (e) { /* no sound */ }
+                ok = false; break;
+              }
+              light(i, 600);
+              await p.wait(350);
+            }
+            if (ok) break;
+            help = true;
+            p.caption("ไม่เป็นไรนะ ดูอีกครั้ง นิ้วจะช่วยชี้");
+            await p.wait(1800);
+            await showTask(seq);
+          }
+          p.caption(r === of - 1 ? "เก่งมาก! ถูกต้องทั้งหมด" : "ถูกต้อง! เก่งมาก");
           await p.wait(1600);
         }
-        p.caption("เก่งมาก! ถูกต้องทั้งหมด");
-        await p.wait(1200);
       }, finish);
     },
 
-    // ---------- Decor: remember the room → one thing changes → tap it ----------
+    // ---------- Decor: round 1 = something changes colour, round 2 = something changes size ----------
     decor(box, finish) {
       box.classList.add("is-decor", "is-play");
       const R = { x: 30, y: 30, w: 70, h: 30 };
@@ -445,58 +505,112 @@
         left: (-R.x / R.w * 100) + "%", top: (-R.y / R.h * 100) + "%",
       });
       pic("assets/decor/web/room.jpg", "howto-fill", world);
-      const items = {
+      const ITEMS = {
         calendar: [33.24, 32.29, 10.74, 8.80], plant: [38.52, 41.56, 19.44, 10.73], radio: [45.93, 51.20, 7.96, 5.10],
         lamp: [60.28, 40.16, 11.30, 6.93], pillow: [68.61, 45.52, 13.80, 6.04], bear: [78.89, 50.10, 10.74, 4.27],
       };
       const els = {};
-      Object.entries(items).forEach(([k, [x, y, w, h]]) => { els[k] = place(pic(`assets/decor/web/items/${k}.png`, "howto-item", world), x, y, w, h); });
-      const lamp = els.lamp;
-      const lx = (60.28 + 11.30 / 2 - R.x) / R.w * 100, ly = (40.16 + 6.93 / 2 - R.y) / R.h * 100;
+      Object.entries(ITEMS).forEach(([k, [x, y, w, h]]) => { els[k] = place(pic(`assets/decor/web/items/${k}.png`, "howto-item", world), x, y, w, h); });
+      const centerOf = (k) => { const [x, y, w, h] = ITEMS[k]; return [(x + w / 2 - R.x) / R.w * 100, (y + h / 2 - R.y) / R.h * 100]; };
+      const NAMES = { lamp: "โคมไฟ", pillow: "หมอน", plant: "ต้นไม้", bear: "ตุ๊กตาหมี" };
+      const change = (k, kind) => kind === "color"
+        ? els[k].animate([{ filter: "hue-rotate(0deg) saturate(1)" }, { filter: "hue-rotate(150deg) saturate(1.7)" }], { duration: 3000, fill: "forwards", easing: "ease-in" })
+        : els[k].animate([{ transform: "scale(1)" }, { transform: "scale(1.6)" }], { duration: 3000, fill: "forwards", easing: "ease-in" });
+      const reset = () => {
+        Object.values(els).forEach((e) => e.getAnimations().forEach((a) => a.cancel()));
+        box.querySelectorAll(".howto-ring").forEach((r) => r.remove());
+      };
+      const ring = (k) => { const [x, y] = centerOf(k); place(el("span", "howto-ring", box), x - 13, y - 20, 26, 40); };
+      const ROUNDS = [
+        { kind: "color", demo: "lamp", mine: "pillow", intro: "จำของในห้องไว้ให้ดี\nแล้วของ 1 ชิ้นจะค่อยๆ เปลี่ยนสี", what: "เปลี่ยนสี" },
+        { kind: "size", demo: "plant", mine: "bear", intro: "บางครั้งของจะค่อยๆ เปลี่ยนขนาด\nใหญ่ขึ้นหรือเล็กลง", what: "ใหญ่ขึ้น" },
+      ];
+      const of = ROUNDS.length;
+
       return practice(box, async (p) => {
-        // step 1: remember
-        p.sayStep(1, 3, "จำของในห้องไว้ให้ดี");
-        for (const n of [3, 2, 1]) { p.caption(`จำไว้นะ… ${n}`); await p.wait(1000); }
-        // step 2: one thing slowly changes
-        p.sayStep(2, 3, "ดูให้ดี ของ 1 ชิ้นจะค่อยๆ เปลี่ยนสีหรือขนาด");
-        p.caption("อะไรเปลี่ยนไป?");
-        lamp.animate([{ filter: "hue-rotate(0deg) saturate(1)" }, { filter: "hue-rotate(150deg) saturate(1.6)" }], { duration: 2600, fill: "forwards", easing: "ease-in" });
-        await p.wait(2800);
-        // step 3: tap it (the finger shows where if the player needs help)
-        p.sayStep(3, 3, "เห็นแล้วแตะที่ของชิ้นนั้นเลย");
-        p.caption("แตะของที่เปลี่ยนไป");
-        const hint = setTimeout(() => { if (p.alive()) { p.point(lx, ly); p.caption("ลองแตะโคมไฟที่นิ้วชี้"); } }, 2500);
-        p.cleanups.add(() => clearTimeout(hint));
-        await p.waitTap([lamp], (e) => {
-          const it = Object.values(els).find((x) => x === e.target);
-          if (it) p.shake(it);
-          p.point(lx, ly);
-          p.caption("ยังไม่ใช่ ของที่เปลี่ยนคือชิ้นที่นิ้วชี้");
-        });
-        clearTimeout(hint);
-        p.unpoint();
-        place(el("span", "howto-ring", box), lx - 13, ly - 20, 26, 40);
-        p.caption("เจอแล้ว! โคมไฟเปลี่ยนสี");
-        await p.wait(1800);
+        const showTask = async (k, kind) => {
+          reset();
+          p.caption("");
+          for (const n of [3, 2, 1]) { p.caption(`จำห้องนี้ไว้นะ… ${n}`); await p.wait(1000); }
+          p.caption("ดูให้ดี อะไรเปลี่ยนไป?");
+          change(k, kind);
+          await p.wait(3200);
+        };
+        for (let r = 0; r < of; r++) {
+          const { kind, demo, mine, intro, what } = ROUNDS[r];
+          // 1. explanation
+          p.say(r + 1, of, "อ่านคำอธิบาย");
+          p.caption("");
+          await p.explain(intro);
+          // 2. the task
+          p.say(r + 1, of, "ดูโจทย์: จำห้อง แล้วดูว่าอะไรเปลี่ยน");
+          await showTask(demo, kind);
+          // 3. the finger shows the answer
+          p.say(r + 1, of, `ดูตัวอย่าง: นิ้วแตะของที่${what}`);
+          p.caption("ดูนิ้วแตะให้ดูนะ");
+          await p.fingerTap(...centerOf(demo));
+          ring(demo);
+          p.caption(`เจอแล้ว! ${NAMES[demo]}${what}`);
+          await p.wait(1800);
+          await p.fingerAway();
+          // 4. the player's turn: another thing changes the same way
+          p.say(r + 1, of, `ลองเอง: หาของที่${what} แล้วแตะเลย`);
+          await p.explain("ตาคุณแล้ว!\nจำห้องไว้ แล้วแตะของที่เปลี่ยนไป");
+          p.say(r + 1, of, `ลองเอง: หาของที่${what} แล้วแตะเลย`);
+          await showTask(mine, kind);
+          p.caption("แตะของที่เปลี่ยนไป");
+          const hint = p.later(4500, () => { p.point(...centerOf(mine)); p.caption(`ลองแตะ${NAMES[mine]}ที่นิ้วชี้`); });
+          await p.waitTap([els[mine]], (e) => {
+            const it = Object.values(els).find((x) => x === e.target);
+            if (it) p.shake(it);
+            p.point(...centerOf(mine));
+            p.caption("ยังไม่ใช่ ของที่เปลี่ยนคือชิ้นที่นิ้วชี้");
+          });
+          hint.cancel(); p.unpoint();
+          ring(mine);
+          p.caption(`เก่งมาก! ${NAMES[mine]}${what}`);
+          await p.wait(1800);
+        }
       }, finish);
     },
 
-    // ---------- Market: remember the list → drag the fruit → drop it next to the 2 oranges ----------
+    // ---------- Market: round 1 = orange, round 2 = mangosteen (drag, let go, 3 in a row) ----------
     market(box, finish) {
       box.classList.add("is-market", "is-play");
       pic("assets/market/web/basket_b.png", "howto-basket", box);
       const F = "assets/market/web/";
-      const sit = [place(pic(F + "orange.png", "howto-fruit", box), 30, 64, 15, 22), place(pic(F + "orange.png", "howto-fruit", box), 44, 66, 15, 22)];
-      place(pic(F + "mangosteen.png", "howto-fruit", box), 60, 64, 15, 22);
-      const fruit = place(pic(F + "orange.png", "howto-fruit", box), 70, 2, 15, 22);
-      fruit.style.opacity = 0;
-      const zone = place(el("span", "howto-zone", box), 29, 2, 23, 62);
-      zone.hidden = true;
+      // two oranges on the left, two mangosteens on the right, sitting in the basket
+      const sitting = [
+        place(pic(F + "orange.png", "howto-fruit", box), 14, 64, 15, 22), place(pic(F + "orange.png", "howto-fruit", box), 27, 66, 15, 22),
+        place(pic(F + "mangosteen.png", "howto-fruit", box), 57, 66, 15, 22), place(pic(F + "mangosteen.png", "howto-fruit", box), 70, 64, 15, 22),
+      ];
       const list = el("div", "howto-list", box);
-      list.innerHTML = `<img src="${F}orange.png" alt=""> × 1`;
+      list.innerHTML = `<span><img src="${F}orange.png" alt=""> × 1</span><span><img src="${F}mangosteen.png" alt=""> × 1</span>`;
       list.hidden = true;
-      const OK_MIN = 28, OK_MAX = 46;   // fruit left (%) that lands next to the two oranges
-
+      const ROUNDS = [
+        { kind: "orange", name: "ส้ม", from: 70, land: 21, ok: [10, 33], pair: [0, 1],
+          intro: "ลากผลไม้ไปซ้าย-ขวา แล้วปล่อย\nให้ตกลงไปติดกับผลไม้แบบเดียวกัน" },
+        { kind: "mangosteen", name: "มังคุด", from: 8, land: 63, ok: [52, 76], pair: [2, 3],
+          intro: "ผลไม้เหมือนกัน 3 ลูกติดกัน\n= เก็บได้ 1 ชิ้น\nลองกับมังคุดบ้าง" },
+      ];
+      const of = ROUNDS.length;
+      let fruit = null, zone = null;
+      const newFruit = (kind, from) => {
+        if (fruit) fruit.remove();
+        fruit = place(pic(F + kind + ".png", "howto-fruit", box), from, 2, 15, 22);
+        return fruit;
+      };
+      const resetBasket = () => {
+        sitting.forEach((f) => { f.getAnimations().forEach((a) => a.cancel()); f.style.opacity = 1; });
+        box.querySelectorAll(".howto-plus").forEach((e) => e.remove());
+        if (fruit) { fruit.remove(); fruit = null; }
+      };
+      const fall = (top) => fruit.animate([{ top: "2%" }, { top: top + "%" }], { duration: 550, easing: "cubic-bezier(.5,0,1,1)", fill: "forwards" });
+      const pop = async (p, pair) => {
+        [...pair.map((i) => sitting[i]), fruit].forEach((f) => f.animate([{ transform: "scale(1)", opacity: 1 }, { transform: "scale(1.25)", opacity: 1, offset: 0.4 }, { transform: "scale(0.1)", opacity: 0 }], { duration: 500, fill: "forwards" }));
+        place(el("span", "howto-plus", box), 30, 40, 40, 14).textContent = "+1";
+        await p.wait(1700);
+      };
       // drag: the fruit follows the finger left–right; resolves with the left % where it was let go
       const dragOnce = (p) => new Promise((res, rej) => {
         let dragging = false, id = null, grabDx = 0;
@@ -505,8 +619,7 @@
         const down = (e) => {
           dragging = true; id = e.pointerId;
           try { box.setPointerCapture(id); } catch (err) { /* ok */ }
-          const left = parseFloat(fruit.style.left);
-          grabDx = (fruit.contains(e.target) || e.target === fruit) ? xOf(e) - left : 7.5;
+          grabDx = fruit.contains(e.target) ? xOf(e) - parseFloat(fruit.style.left) : 7.5;
           move(e);
           p.unpoint();
         };
@@ -529,51 +642,73 @@
         box.addEventListener("pointerup", up); box.addEventListener("pointercancel", up);
         p.cleanups.add(cancel);
       });
-      const fall = (left, top, ms = 550) => fruit.animate([{ top: "2%" }, { top: top + "%" }], { duration: ms, easing: "cubic-bezier(.5,0,1,1)", fill: "forwards" });
 
       return practice(box, async (p) => {
-        // step 1: remember the shopping list
-        p.sayStep(1, 3, "จำรายการผลไม้ที่ต้องเก็บ: ส้ม 1 ชิ้น");
+        // 0. the shopping list
+        p.say(1, of, "อ่านคำอธิบาย");
+        await p.explain("ก่อนเริ่มเกมจะมีรายการผลไม้ให้จำ\nว่าต้องเก็บอะไร กี่ชิ้น");
+        p.say(1, of, "ดูโจทย์: จำรายการผลไม้");
         list.hidden = false;
-        p.caption("จำไว้นะ");
-        await p.wait(2600);
+        p.caption("จำไว้นะ: ส้ม 1 มังคุด 1");
+        await p.wait(3500);
         list.hidden = true;
-        // step 2: the finger shows a drag, then the player drags and lets go
-        p.sayStep(2, 3, "ลากผลไม้ไปซ้าย-ขวา แล้วปล่อยลงตะกร้า");
-        fruit.style.opacity = 1;
-        p.caption("ดูนิ้วก่อนนะ");
-        Object.assign(p.hand.style, { left: "80%", top: "110%" });
-        p.showHand(true);
-        await p.handTo(77, 14, 700);
-        await p.tap();
-        fruit.animate([{ left: "70%" }, { left: "45%" }, { left: "70%" }], { duration: 1600, easing: "ease-in-out" });
-        await p.handTo(52, 14, 800);
-        await p.handTo(77, 14, 800);
-        for (;;) {
-          fruit.getAnimations().forEach((a) => a.cancel());
-          Object.assign(fruit.style, { left: "70%", top: "2%" });
-          zone.hidden = false;
-          p.caption("ถึงตาคุณ ลากส้มไปเหนือส้ม 2 ลูกแล้วปล่อย");
-          p.point(77, 14);
-          const left = await dragOnce(p);
-          zone.hidden = true;
-          if (left >= OK_MIN && left <= OK_MAX) {
-            fruit.style.left = "37%";
-            fall(37, 47);
-            await p.wait(600);
-            break;
-          }
-          fall(left, 64);
+        for (let r = 0; r < of; r++) {
+          const { kind, name, from, land, ok, pair, intro } = ROUNDS[r];
+          resetBasket();
+          // 1. explanation
+          p.say(r + 1, of, "อ่านคำอธิบาย");
+          p.caption("");
+          await p.explain(intro);
+          // 2. the task: a fruit appears at the top
+          p.say(r + 1, of, `ดูโจทย์: ${name}ลูกใหม่อยู่ด้านบน`);
+          newFruit(kind, from);
+          fruit.animate([{ transform: "scale(0.3)", opacity: 0 }, { transform: "scale(1)", opacity: 1 }], { duration: 400 });
+          p.caption(`${name}ลูกใหม่มาแล้ว`);
+          await p.wait(1400);
+          // 3. the finger drags it over the same fruits and lets go
+          p.say(r + 1, of, `ดูตัวอย่าง: นิ้วลาก${name}ไปเหนือ${name} 2 ลูก แล้วปล่อย`);
+          p.caption("ดูนิ้วลากให้ดูนะ");
+          await p.fingerTap(from + 7.5, 14);
+          fruit.animate([{ left: from + "%" }, { left: land + "%" }], { duration: 1300, easing: "ease-in-out", fill: "forwards" });
+          await p.handTo(land + 7.5, 14, 1300);
+          fruit.style.left = land + "%";
+          await p.fingerAway();
+          fall(47);
           await p.wait(600);
-          p.caption("ยังไม่ติดกับส้ม ลองใหม่อีกครั้งนะ");
-          await p.wait(1500);
+          p.caption("3 ลูกติดกัน = เก็บได้ 1 ชิ้น");
+          await pop(p, pair);
+          // 4. the player's turn
+          resetBasket();
+          p.say(r + 1, of, `ลองเอง: ลาก${name}ไปวางเหนือ${name} 2 ลูก`);
+          await p.explain(`ตาคุณแล้ว!\nลาก${name}ไปเหนือ${name} 2 ลูก แล้วปล่อยนิ้ว`);
+          p.say(r + 1, of, `ลองเอง: ลาก${name}ไปวางเหนือ${name} 2 ลูก`);
+          for (;;) {
+            newFruit(kind, from);
+            zone = zone || el("span", "howto-zone", box);
+            place(zone, ok[0], 2, ok[1] - ok[0] + 15, 62);
+            zone.hidden = false;
+            p.caption(`ลาก${name}ไปในกรอบ แล้วปล่อย`);
+            const hint = p.later(4000, () => p.point(from + 7.5, 14));
+            p.point(from + 7.5, 14);
+            const left = await dragOnce(p);
+            hint.cancel(); p.unpoint();
+            zone.hidden = true;
+            if (left >= ok[0] && left <= ok[1]) {
+              fruit.style.left = land + "%";
+              fall(47);
+              await p.wait(600);
+              break;
+            }
+            fall(64);
+            await p.wait(600);
+            p.caption(`ยังไม่ติดกับ${name} ลองใหม่อีกครั้งนะ`);
+            await p.wait(1600);
+          }
+          p.caption(`เก่งมาก! เก็บ${name}ได้ 1 ชิ้น`);
+          await pop(p, pair);
         }
-        // step 3: three in a row pop = 1 collected
-        p.sayStep(3, 3, "ผลไม้เหมือนกัน 3 ลูกติดกัน = เก็บได้ 1 ชิ้น");
-        [...sit, fruit].forEach((f) => f.animate([{ transform: "scale(1)", opacity: 1 }, { transform: "scale(1.25)", opacity: 1, offset: 0.4 }, { transform: "scale(0.1)", opacity: 0 }], { duration: 500, fill: "forwards" }));
-        place(el("span", "howto-plus", box), 34, 40, 30, 14).textContent = "+1";
-        p.caption("เก็บส้มได้ 1 ชิ้น ครบรายการแล้ว!");
-        await p.wait(2200);
+        p.caption("ครบรายการแล้ว!");
+        await p.wait(1000);
       }, finish);
     },
   };
