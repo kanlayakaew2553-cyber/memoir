@@ -51,6 +51,7 @@
       <button type="button" class="login-quick" data-act="quick">เข้าเล่นเลย (ไม่ต้องสมัคร) ›</button>
     </form>`;
   document.getElementById("screen-placeholder").before(screen);
+  if (M.settings && M.settings.textPicker) M.settings.textPicker(screen);   // ขนาดตัวอักษร at the top
 
   const form = screen.querySelector(".login-form");
   const email = form.querySelector('[name="email"]');

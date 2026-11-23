@@ -17,6 +17,15 @@
   try { st = Object.assign(st, JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) { /* storage off */ }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) { /* storage off */ } }
 
+  // A size picked on the login screen (before any account) carries into the account entered next.
+  const PICK = "memoir-text-pick";   // sessionStorage: not redirected per account
+  try {
+    const pick = sessionStorage.getItem(PICK);
+    if (pick && window.MemoirAccount && window.MemoirAccount.current) {
+      st.text = pick; save(); sessionStorage.removeItem(PICK);
+    }
+  } catch (e) { /* storage off */ }
+
   function applyAll() {
     if (M.sound) M.sound.setVolume(st.vol);
     root.dataset.text = TEXT.some(([k]) => k === st.text) ? st.text : "l";
@@ -106,5 +115,26 @@
   $(".settings-done").addEventListener("click", close);
   modal.addEventListener("click", (e) => { if (e.target === modal) close(); });
 
-  M.settings = { open };
+  // ---------- text-size picker on the login screen (same setting as in the popup) ----------
+  // (called by js/login.js once it has built the login screen)
+  function textPicker(login) {
+    const bar = document.createElement("div");
+    bar.className = "login-textsize";
+    bar.setAttribute("role", "group");
+    bar.setAttribute("aria-label", "ขนาดตัวอักษร");
+    bar.innerHTML = `<span>ขนาดตัวอักษร</span>` +
+      TEXT.map(([k, label]) => `<button type="button" data-v="${k}" aria-label="${label}"><b class="ts-${k}">ก</b></button>`).join("");
+    login.append(bar);
+    const renderBar = () => bar.querySelectorAll("button").forEach((b) => mark(b, b.dataset.v === st.text));
+    bar.addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      st.text = b.dataset.v; save(); applyAll(); renderBar();
+      try { sessionStorage.setItem(PICK, st.text); } catch (err) { /* storage off */ }
+    });
+    renderBar();
+    return bar;
+  }
+
+  M.settings = { open, textPicker };
 })();

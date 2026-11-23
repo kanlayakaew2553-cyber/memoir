@@ -4,6 +4,9 @@
  *   - Shown by itself every time level 1 of a game is started from the level map.
  *   - "?" button on each game's level map (shows that game).
  *   - Frame: assets/ui/web/win_panel.png (Drive "ผ่านแล้ว_กรอบหลัง"); X at the top right closes it.
+ *   - "ทดลองเล่น" turns the same popup into a short practice round (PRACTICE below): the finger
+ *     shows each step, a step text explains it, and the player does it. At the end "เล่นเลย"
+ *     starts level 1 of that game.
  */
 (() => {
   "use strict";
@@ -48,17 +51,31 @@
         <div class="howto-tabs" role="tablist"></div>
         <div class="howto-demo" aria-hidden="true"></div>
         <ol class="howto-steps"></ol>
-        <button type="button" class="howto-go"></button>
+        <p class="howto-say" hidden></p>
+        <button type="button" class="howto-go">ทดลองเล่น</button>
+      </div>
+      <div class="howto-done" hidden>
+        <p>เยี่ยมมาก!<br>พร้อมเล่นจริงแล้ว</p>
+        <button type="button" class="howto-play">เล่นเลย</button>
       </div>
     </div>`;
   document.getElementById("stage").append(modal);
   const $ = (s) => modal.querySelector(s);
   const demoBox = $(".howto-demo"), tabs = $(".howto-tabs"), steps = $(".howto-steps"), go = $(".howto-go"), title = $(".howto-title");
+  const say = $(".howto-say"), done = $(".howto-done"), card = $(".howto-card");
 
   let current = null, stopDemo = null, onDone = null, firstGame = null;
 
+  // back to the "how to play" view (looping demo + 3 steps + ทดลองเล่น)
+  function resetView() {
+    card.classList.remove("is-practice");
+    steps.hidden = false; go.hidden = false; say.hidden = true; done.hidden = true;
+    demoBox.className = "howto-demo";
+  }
+
   function show(game) {
     current = game;
+    resetView();
     const g = GAMES[game];
     title.textContent = g.title;
     steps.innerHTML = g.steps.map((s) => `<li>${s}</li>`).join("");
@@ -84,23 +101,45 @@
         tabs.append(b);
       });
     }
-    go.textContent = opts.first ? "เริ่มเล่นเลย" : "เข้าใจแล้ว";
     modal.hidden = false;
     show(game || ORDER[0]);
     go.focus({ preventScroll: true });
   }
-  // start = true: "เริ่มเล่นเลย" (the level starts); false: X / Escape just closes the popup
+  // start = true: "เล่นเลย" after the practice (level 1 starts); false: X / Escape just closes the popup
   function close(start) {
     modal.hidden = true;
     if (stopDemo) { stopDemo(); stopDemo = null; }
     demoBox.innerHTML = "";
+    resetView();
     if (firstGame) markSeen(firstGame);
-    const cb = onDone;
+    const cb = onDone, game = current;
     onDone = null; firstGame = null;
-    if (start === true && cb) cb();
+    if (start !== true) return;
+    if (cb) cb();                                         // level 1 was chosen on the map
+    else if (M[game] && M[game].start) M[game].start(1);  // opened from "?": go to level 1
   }
   $(".howto-x").addEventListener("click", () => close(false));
-  go.addEventListener("click", () => close(true));
+  go.addEventListener("click", () => startPractice(current));
+  $(".howto-play").addEventListener("click", () => close(true));
+
+  // ---------- ทดลองเล่น: the same popup becomes a small practice round ----------
+  function startPractice(game) {
+    if (stopDemo) stopDemo();
+    demoBox.innerHTML = "";
+    card.classList.add("is-practice");
+    steps.hidden = true; go.hidden = true; say.hidden = false; done.hidden = true;
+    title.textContent = "ทดลองเล่น";
+    stopDemo = PRACTICE[game](demoBox, () => {
+      done.hidden = false;
+      $(".howto-play").focus({ preventScroll: true });
+    });
+  }
+  // step text under the practice box: "ขั้นที่ 1/3" + what to do
+  function sayStep(n, of, text) {
+    say.innerHTML = `<b>ขั้นที่ ${n}/${of}</b><span></span>`;
+    say.querySelector("span").textContent = text;
+    say.animate([{ transform: "scale(0.94)", opacity: 0.4 }, { transform: "none", opacity: 1 }], { duration: 260, easing: "ease-out" });
+  }
   modal.addEventListener("keydown", (e) => { if (e.key === "Escape") close(false); });
   modal.addEventListener("click", (e) => { if (e.target === modal) close(false); });   // tap outside = close
 
@@ -127,14 +166,8 @@
     i.src = src; i.alt = ""; i.draggable = false;
     return i;
   }
-  // runs script(api) again and again; returns stop()
-  function loop(box, script) {
-    let alive = true;
-    const timers = new Set();
-    const wait = (ms) => new Promise((res, rej) => {
-      const t = setTimeout(() => { timers.delete(t); alive ? res() : rej(new Error("stop")); }, ms);
-      timers.add(t);
-    });
+  // the pointing finger and its moves, inside box
+  function makeHand(box, wait) {
     const hand = el("div", "howto-hand", box);
     hand.innerHTML = '<img src="assets/icons/web/hand.png" alt="" draggable="false">';
     // finger tip at (x%, y%) of the demo box
@@ -153,7 +186,28 @@
       await wait(320);
     };
     const showHand = (on) => hand.animate([{}, { opacity: on ? 1 : 0 }], { duration: 250, fill: "forwards" });
-    const api = { wait, handTo, tap, hand, showHand };
+    // finger bobs on the spot ("tap here") until stopped
+    let bob = null;
+    const point = (x, y) => {
+      if (bob) bob.cancel();
+      hand.getAnimations().forEach((a) => a.cancel());
+      Object.assign(hand.style, { left: x + "%", top: y + "%", opacity: 1 });
+      bob = hand.animate([{ transform: "translate(-40%, 0)" }, { transform: "translate(-40%, 18%)" }, { transform: "translate(-40%, 0)" }],
+        { duration: 900, iterations: Infinity, easing: "ease-in-out" });
+    };
+    const unpoint = () => { bob = null; hand.getAnimations().forEach((a) => a.cancel()); hand.style.opacity = 0; };
+    return { hand, handTo, tap, showHand, point, unpoint };
+  }
+
+  // runs script(api) again and again; returns stop()
+  function loop(box, script) {
+    let alive = true;
+    const timers = new Set();
+    const wait = (ms) => new Promise((res, rej) => {
+      const t = setTimeout(() => { timers.delete(t); alive ? res() : rej(new Error("stop")); }, ms);
+      timers.add(t);
+    });
+    const api = { wait, ...makeHand(box, wait) };
     (async () => {
       while (alive) {
         box.getAnimations({ subtree: true }).forEach((a) => a.cancel());   // start each round clean
@@ -281,6 +335,248 @@
       await wait(2000);
     });
   }
+
+  // =====================================================================
+  // ทดลองเล่น (practice): the finger shows each step, then the player does it.
+  // Nothing is scored, no hearts are used. When finished: finish() shows "เล่นเลย".
+  // =====================================================================
+  function practice(box, script, finish) {
+    let alive = true;
+    const timers = new Set(), cleanups = new Set();
+    const STOP = new Error("stop");
+    const wait = (ms) => new Promise((res, rej) => {
+      const t = setTimeout(() => { timers.delete(t); alive ? res() : rej(STOP); }, ms);
+      timers.add(t);
+    });
+    // resolves with the tapped target; onMiss(e) for a tap anywhere else in the box
+    const waitTap = (targets, onMiss) => new Promise((res, rej) => {
+      const h = (e) => {
+        const hit = targets.find((t) => t === e.target || t.contains(e.target));
+        if (hit) { off(); res(hit); } else if (onMiss) onMiss(e);
+      };
+      const off = () => { box.removeEventListener("pointerdown", h); cleanups.delete(cancel); };
+      const cancel = () => { off(); rej(STOP); };
+      box.addEventListener("pointerdown", h);
+      cleanups.add(cancel);
+    });
+    const shake = (e) => e.animate([{ translate: "0 0" }, { translate: "-6% 0" }, { translate: "6% 0" }, { translate: "-4% 0" }, { translate: "0 0" }], { duration: 380 });
+    const api = { wait, waitTap, shake, sayStep, caption: (t) => caption(box, t), alive: () => alive, cleanups, ...makeHand(box, wait) };
+    api.hand.style.opacity = 0;
+    script(api).then(() => { if (alive) finish(); }, (e) => { if (e !== STOP) throw e; });
+    return () => {
+      alive = false;
+      timers.forEach(clearTimeout); timers.clear();
+      [...cleanups].forEach((c) => c());
+      box.getAnimations({ subtree: true }).forEach((a) => a.cancel());
+    };
+  }
+
+  const PRACTICE = {
+    // ---------- Melody: watch 1 record → tap it → watch 2 → tap both in order ----------
+    melody(box, finish) {
+      box.classList.add("is-melody", "is-play");
+      const NOTES = ["C4", "D4", "E4", "F4", "G4", "A4"];
+      const recs = [];
+      for (let i = 0; i < 6; i++) {
+        const col = i % 3, row = Math.floor(i / 3);
+        recs.push(place(pic(`assets/melody/web/rec${i + 1}.png`, "howto-rec", box), 7 + col * 30, 6 + row * 38, 26, 34));
+      }
+      const center = (i) => { const col = i % 3, row = Math.floor(i / 3); return [7 + col * 30 + 13, 6 + row * 38 + 17]; };
+      const mel = M.melody || {};
+      const light = (i, ms) => {
+        recs[i].animate([{ filter: "brightness(1)" }, { filter: "brightness(1.6) drop-shadow(0 0 6px #ffe680)", offset: 0.2 }, { filter: "brightness(1.6) drop-shadow(0 0 6px #ffe680)", offset: 0.8 }, { filter: "brightness(1)" }], { duration: ms });
+        try { if (mel.playNote) mel.playNote(NOTES[i], ms / 1000 * 0.8); } catch (e) { /* no sound */ }
+      };
+      const wrong = (e) => {
+        const r = recs.find((x) => x === e.target);
+        if (r) shake(r);
+        try { if (mel.playWrong) mel.playWrong(); } catch (err) { /* no sound */ }
+      };
+      let shake;
+      return practice(box, async (p) => {
+        shake = p.shake;
+        // step 1: watch and listen
+        p.sayStep(1, 3, "ดูและฟัง แผ่นเสียงจะสว่างขึ้นพร้อมเสียงเพลง");
+        p.caption("ดูให้ดีนะ");
+        await p.wait(1200);
+        light(1, 1100); await p.wait(1700);
+        // step 2: the finger shows, then the player taps the same record
+        p.sayStep(2, 3, "แตะแผ่นเสียงที่สว่างเมื่อกี้ ตามที่นิ้วชี้");
+        p.caption("ถึงตาคุณ แตะเลย");
+        p.point(...center(1));
+        await p.waitTap([recs[1]], (e) => { wrong(e); p.caption("ยังไม่ใช่ แตะแผ่นที่นิ้วชี้นะ"); });
+        p.unpoint(); light(1, 600);
+        p.caption("ถูกต้อง!");
+        await p.wait(1400);
+        // step 3: two records; the player remembers the order alone (the finger helps after a mistake)
+        p.sayStep(3, 3, "เพลงยาวขึ้นทีละโน้ต จำ 2 แผ่นแล้วแตะตามลำดับ (เกมจริงมีเวลา 10 วินาที)");
+        const seq = [1, 3];
+        let help = false;
+        for (;;) {
+          p.caption("ดูให้ดีนะ");
+          await p.wait(900);
+          for (const i of seq) { light(i, 1000); await p.wait(1400); }
+          p.caption("ถึงตาคุณ แตะตามลำดับ");
+          let ok = true;
+          for (const i of seq) {
+            if (help) p.point(...center(i));
+            const hit = await p.waitTap(recs);
+            p.unpoint();
+            if (hit !== recs[i]) { wrong({ target: hit }); ok = false; break; }
+            light(i, 600);
+            await p.wait(300);
+          }
+          if (ok) break;
+          help = true;
+          p.caption("ไม่เป็นไร ดูอีกครั้งนะ นิ้วจะช่วยชี้");
+          await p.wait(1600);
+        }
+        p.caption("เก่งมาก! ถูกต้องทั้งหมด");
+        await p.wait(1200);
+      }, finish);
+    },
+
+    // ---------- Decor: remember the room → one thing changes → tap it ----------
+    decor(box, finish) {
+      box.classList.add("is-decor", "is-play");
+      const R = { x: 30, y: 30, w: 70, h: 30 };
+      const world = el("div", "howto-world", box, {
+        width: (100 / R.w * 100) + "%", height: (100 / R.h * 100) + "%",
+        left: (-R.x / R.w * 100) + "%", top: (-R.y / R.h * 100) + "%",
+      });
+      pic("assets/decor/web/room.jpg", "howto-fill", world);
+      const items = {
+        calendar: [33.24, 32.29, 10.74, 8.80], plant: [38.52, 41.56, 19.44, 10.73], radio: [45.93, 51.20, 7.96, 5.10],
+        lamp: [60.28, 40.16, 11.30, 6.93], pillow: [68.61, 45.52, 13.80, 6.04], bear: [78.89, 50.10, 10.74, 4.27],
+      };
+      const els = {};
+      Object.entries(items).forEach(([k, [x, y, w, h]]) => { els[k] = place(pic(`assets/decor/web/items/${k}.png`, "howto-item", world), x, y, w, h); });
+      const lamp = els.lamp;
+      const lx = (60.28 + 11.30 / 2 - R.x) / R.w * 100, ly = (40.16 + 6.93 / 2 - R.y) / R.h * 100;
+      return practice(box, async (p) => {
+        // step 1: remember
+        p.sayStep(1, 3, "จำของในห้องไว้ให้ดี");
+        for (const n of [3, 2, 1]) { p.caption(`จำไว้นะ… ${n}`); await p.wait(1000); }
+        // step 2: one thing slowly changes
+        p.sayStep(2, 3, "ดูให้ดี ของ 1 ชิ้นจะค่อยๆ เปลี่ยนสีหรือขนาด");
+        p.caption("อะไรเปลี่ยนไป?");
+        lamp.animate([{ filter: "hue-rotate(0deg) saturate(1)" }, { filter: "hue-rotate(150deg) saturate(1.6)" }], { duration: 2600, fill: "forwards", easing: "ease-in" });
+        await p.wait(2800);
+        // step 3: tap it (the finger shows where if the player needs help)
+        p.sayStep(3, 3, "เห็นแล้วแตะที่ของชิ้นนั้นเลย");
+        p.caption("แตะของที่เปลี่ยนไป");
+        const hint = setTimeout(() => { if (p.alive()) { p.point(lx, ly); p.caption("ลองแตะโคมไฟที่นิ้วชี้"); } }, 2500);
+        p.cleanups.add(() => clearTimeout(hint));
+        await p.waitTap([lamp], (e) => {
+          const it = Object.values(els).find((x) => x === e.target);
+          if (it) p.shake(it);
+          p.point(lx, ly);
+          p.caption("ยังไม่ใช่ ของที่เปลี่ยนคือชิ้นที่นิ้วชี้");
+        });
+        clearTimeout(hint);
+        p.unpoint();
+        place(el("span", "howto-ring", box), lx - 13, ly - 20, 26, 40);
+        p.caption("เจอแล้ว! โคมไฟเปลี่ยนสี");
+        await p.wait(1800);
+      }, finish);
+    },
+
+    // ---------- Market: remember the list → drag the fruit → drop it next to the 2 oranges ----------
+    market(box, finish) {
+      box.classList.add("is-market", "is-play");
+      pic("assets/market/web/basket_b.png", "howto-basket", box);
+      const F = "assets/market/web/";
+      const sit = [place(pic(F + "orange.png", "howto-fruit", box), 30, 64, 15, 22), place(pic(F + "orange.png", "howto-fruit", box), 44, 66, 15, 22)];
+      place(pic(F + "mangosteen.png", "howto-fruit", box), 60, 64, 15, 22);
+      const fruit = place(pic(F + "orange.png", "howto-fruit", box), 70, 2, 15, 22);
+      fruit.style.opacity = 0;
+      const zone = place(el("span", "howto-zone", box), 29, 2, 23, 62);
+      zone.hidden = true;
+      const list = el("div", "howto-list", box);
+      list.innerHTML = `<img src="${F}orange.png" alt=""> × 1`;
+      list.hidden = true;
+      const OK_MIN = 28, OK_MAX = 46;   // fruit left (%) that lands next to the two oranges
+
+      // drag: the fruit follows the finger left–right; resolves with the left % where it was let go
+      const dragOnce = (p) => new Promise((res, rej) => {
+        let dragging = false, id = null, grabDx = 0;
+        const bx = () => box.getBoundingClientRect();
+        const xOf = (e) => (e.clientX - bx().left) / bx().width * 100;
+        const down = (e) => {
+          dragging = true; id = e.pointerId;
+          try { box.setPointerCapture(id); } catch (err) { /* ok */ }
+          const left = parseFloat(fruit.style.left);
+          grabDx = (fruit.contains(e.target) || e.target === fruit) ? xOf(e) - left : 7.5;
+          move(e);
+          p.unpoint();
+        };
+        const move = (e) => {
+          if (!dragging || e.pointerId !== id) return;
+          fruit.style.left = Math.max(2, Math.min(83, xOf(e) - grabDx)) + "%";
+        };
+        const up = (e) => {
+          if (!dragging || e.pointerId !== id) return;
+          dragging = false; off();
+          res(parseFloat(fruit.style.left));
+        };
+        const off = () => {
+          box.removeEventListener("pointerdown", down); box.removeEventListener("pointermove", move);
+          box.removeEventListener("pointerup", up); box.removeEventListener("pointercancel", up);
+          p.cleanups.delete(cancel);
+        };
+        const cancel = () => { off(); rej(new Error("stop")); };
+        box.addEventListener("pointerdown", down); box.addEventListener("pointermove", move);
+        box.addEventListener("pointerup", up); box.addEventListener("pointercancel", up);
+        p.cleanups.add(cancel);
+      });
+      const fall = (left, top, ms = 550) => fruit.animate([{ top: "2%" }, { top: top + "%" }], { duration: ms, easing: "cubic-bezier(.5,0,1,1)", fill: "forwards" });
+
+      return practice(box, async (p) => {
+        // step 1: remember the shopping list
+        p.sayStep(1, 3, "จำรายการผลไม้ที่ต้องเก็บ: ส้ม 1 ชิ้น");
+        list.hidden = false;
+        p.caption("จำไว้นะ");
+        await p.wait(2600);
+        list.hidden = true;
+        // step 2: the finger shows a drag, then the player drags and lets go
+        p.sayStep(2, 3, "ลากผลไม้ไปซ้าย-ขวา แล้วปล่อยลงตะกร้า");
+        fruit.style.opacity = 1;
+        p.caption("ดูนิ้วก่อนนะ");
+        Object.assign(p.hand.style, { left: "80%", top: "110%" });
+        p.showHand(true);
+        await p.handTo(77, 14, 700);
+        await p.tap();
+        fruit.animate([{ left: "70%" }, { left: "45%" }, { left: "70%" }], { duration: 1600, easing: "ease-in-out" });
+        await p.handTo(52, 14, 800);
+        await p.handTo(77, 14, 800);
+        for (;;) {
+          fruit.getAnimations().forEach((a) => a.cancel());
+          Object.assign(fruit.style, { left: "70%", top: "2%" });
+          zone.hidden = false;
+          p.caption("ถึงตาคุณ ลากส้มไปเหนือส้ม 2 ลูกแล้วปล่อย");
+          p.point(77, 14);
+          const left = await dragOnce(p);
+          zone.hidden = true;
+          if (left >= OK_MIN && left <= OK_MAX) {
+            fruit.style.left = "37%";
+            fall(37, 47);
+            await p.wait(600);
+            break;
+          }
+          fall(left, 64);
+          await p.wait(600);
+          p.caption("ยังไม่ติดกับส้ม ลองใหม่อีกครั้งนะ");
+          await p.wait(1500);
+        }
+        // step 3: three in a row pop = 1 collected
+        p.sayStep(3, 3, "ผลไม้เหมือนกัน 3 ลูกติดกัน = เก็บได้ 1 ชิ้น");
+        [...sit, fruit].forEach((f) => f.animate([{ transform: "scale(1)", opacity: 1 }, { transform: "scale(1.25)", opacity: 1, offset: 0.4 }, { transform: "scale(0.1)", opacity: 0 }], { duration: 500, fill: "forwards" }));
+        place(el("span", "howto-plus", box), 34, 40, 30, 14).textContent = "+1";
+        p.caption("เก็บส้มได้ 1 ชิ้น ครบรายการแล้ว!");
+        await p.wait(2200);
+      }, finish);
+    },
+  };
 
   // =====================================================================
   // "?" buttons (drawn in code in the game's own colours)

@@ -970,7 +970,7 @@ button.rk-card { border: 0; cursor: pointer; }
 .howto-card { position: relative; width: 90cqw; min-height: calc(90cqw * 1171 / 838); max-height: 96cqh; display: flex; animation: sign-in 260ms cubic-bezier(.2, 1.3, .4, 1); }
 .howto-frame { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .howto-x {
-  position: absolute; right: -1.5cqw; top: -1.5cqw; z-index: 2;
+  position: absolute; right: -1.5cqw; top: -1.5cqw; z-index: 6;
   width: 11cqw; height: 11cqw; border-radius: 50%;
   border: 1cqw solid #fdf0d5; background: #8a3510; color: #fdf0d5;
   font: calc(5.6cqw * var(--ts))/1 "Itim", sans-serif; cursor: pointer;
@@ -999,6 +999,32 @@ button.rk-card { border: 0; cursor: pointer; }
 .howto-steps { margin: 0; padding: 0 0 0 6cqw; text-align: left; font-size: calc(4.2cqw * var(--ts)); line-height: 1.35; align-self: stretch; }
 .howto-steps li { margin: 0.6cqw 0; }
 html[data-text="xl"] .howto-demo { width: 84%; }
+/* ทดลองเล่น (practice) */
+.howto-steps[hidden], .howto-go[hidden], .howto-say[hidden], .howto-done[hidden], .howto-zone[hidden] { display: none; }
+.howto-demo.is-play { touch-action: none; cursor: pointer; user-select: none; -webkit-user-select: none; }
+.howto-card.is-practice .howto-demo { width: 100%; }
+.howto-say {
+  margin: 0; align-self: stretch; display: flex; flex-direction: column; gap: 1cqw;
+  padding: 2.4cqw 3.4cqw; border-radius: 3cqw; background: rgba(90, 30, 10, 0.35);
+  font-size: calc(4.8cqw * var(--ts)); line-height: 1.3;
+}
+.howto-say b { font-weight: 400; color: #ffd36b; font-size: calc(3.8cqw * var(--ts)); }
+.howto-zone { position: absolute; z-index: 1; border: 0.8cqw dashed #fffaf0; border-radius: 3cqw; background: rgba(255, 250, 240, 0.25);
+  animation: howto-zone 1.2s ease-in-out infinite alternate; pointer-events: none; }
+@keyframes howto-zone { from { opacity: 0.45; } to { opacity: 1; } }
+.howto-done {
+  position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5cqw;
+  border-radius: 5cqw; background: rgba(60, 22, 6, 0.6); animation: sign-in 300ms cubic-bezier(.2, 1.3, .4, 1);
+}
+.howto-done p { margin: 0; text-align: center; color: #fdf0d5; font: calc(7.4cqw * var(--ts))/1.25 "Itim", sans-serif; text-shadow: 0 0.6cqw 1.2cqw rgba(0, 0, 0, 0.5); }
+.howto-play {
+  border: 1cqw solid #fdf0d5; border-radius: 99px; padding: 3.6cqw 14cqw; cursor: pointer;
+  background: #43a047; color: #fff; font: calc(8cqw * var(--ts)) "Itim", sans-serif;
+  box-shadow: 0 1.4cqw 0 #23692a, 0 2cqw 4cqw rgba(0, 0, 0, 0.4);
+  animation: howto-pulse 1.4s ease-in-out infinite;
+}
+.howto-play:active { transform: translateY(1cqw); box-shadow: 0 0.4cqw 0 #23692a; animation: none; }
+@keyframes howto-pulse { 50% { scale: 1.06; } }
 .howto-go {
   margin-top: auto; border: 0; border-radius: 99px; padding: 2.2cqw 9cqw;
   background: #fdf0d5; color: #b14a12; font: calc(5.4cqw * var(--ts)) "Itim", sans-serif; cursor: pointer;
@@ -1099,6 +1125,22 @@ html[data-text="xl"] .howto-demo { width: 84%; }
   opacity: 0; transform: translateY(1cqh); transition: opacity 200ms, transform 200ms; pointer-events: none;
 }
 .login-msg.is-shown { opacity: 1; transform: none; }
+/* text size picker at the top of the login screen (js/settings.js) */
+.login-textsize {
+  position: absolute; z-index: 2; right: 3%; top: 1.4%; display: flex; align-items: center; gap: 1.4cqw;
+  padding: 1cqw 1.2cqw 1cqw 3cqw; border-radius: 99px; background: rgba(40, 20, 8, 0.6); border: 0.5cqw solid rgba(253, 240, 213, 0.7);
+}
+.login-textsize span { color: #fdf0d5; font: 3.6cqw "Itim", "Sarabun", sans-serif; margin-right: 0.6cqw; white-space: nowrap; }
+.login-textsize button {
+  width: 10cqw; height: 10cqw; border-radius: 50%; border: 0.5cqw solid #d8c49a; background: #fdf0d5; color: #7a5a3a;
+  display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer; font-family: "Itim", sans-serif;
+}
+.login-textsize button b { font-weight: 400; line-height: 1; }
+.login-textsize .ts-m { font-size: 4.4cqw; }
+.login-textsize .ts-l { font-size: 5.6cqw; }
+.login-textsize .ts-xl { font-size: 7cqw; }
+.login-textsize button.is-on { background: #e0612f; border-color: #fdf0d5; color: #fff; }
+.login-textsize button:active { transform: scale(0.92); }
 /* small quick-play link at the bottom (for presentations) */
 .login-quick {
   position: absolute; left: 50%; bottom: 3%; translate: -50% 0;

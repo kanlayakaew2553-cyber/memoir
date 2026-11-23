@@ -383,5 +383,5 @@
     else if (!popupOpen() && S.phase === "paused") resume();
   });
 
-  window.Memoir.melody = { start, stop, CONFIG, notesFor, debug: { state: () => S } };
+  window.Memoir.melody = { start, stop, CONFIG, notesFor, playNote, playWrong, debug: { state: () => S } };
 })();
