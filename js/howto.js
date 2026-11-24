@@ -22,7 +22,7 @@
   const GAMES = {
     decor: {
       title: "หาสิ่งผิดปกติในบ้าน",
-      steps: ["จำของในห้องไว้ให้ดี 5 วินาที", "ของ 1 ชิ้นจะค่อยๆ เปลี่ยนสีหรือขนาด", "เห็นแล้วแตะที่ของชิ้นนั้นเลย ยิ่งเร็วยิ่งได้ดาวเยอะ"],
+      steps: ["สังเกตของในห้องไว้ให้ดี 5 วินาที", "ของ 1 ชิ้นจะค่อยๆ เปลี่ยนสีหรือขนาด", "เห็นแล้วแตะที่ของชิ้นนั้นเลย ยิ่งเร็วยิ่งได้ดาวเยอะ"],
       demo: demoDecor,
     },
     melody: {
@@ -260,7 +260,7 @@
       box.querySelectorAll(".howto-ring").forEach((r) => r.remove());
       Object.assign(hand.style, { left: "80%", top: "110%" });
       showHand(false);
-      caption(box, "จำห้องนี้ไว้นะ");
+      caption(box, "สังเกตห้องนี้ไว้นะ");
       await wait(1800);
       caption(box, "ของชิ้นไหนเปลี่ยนไป?");
       lamp.animate([{ filter: "hue-rotate(0deg) saturate(1)" }, { filter: "hue-rotate(150deg) saturate(1.6)" }], { duration: 2400, fill: "forwards", easing: "ease-in" });
@@ -382,19 +382,17 @@
       box.addEventListener("pointerdown", h);
       cleanups.add(cancel);
     });
-    // explanation card over the play area; reading time grows with the text; tap = next
-    const explain = (text, minMs = 4000) => new Promise((res, rej) => {
+    // explanation card over the play area; stays until the player presses "เข้าใจแล้ว"
+    const explain = (text) => new Promise((res, rej) => {
       const card = el("div", "howto-explain", box.closest(".howto-card") || box);
-      card.innerHTML = `<p></p><i class="howto-explain-bar"><b></b></i><small>แตะเพื่อไปต่อ</small>`;
+      card.innerHTML = `<p></p><button type="button" class="howto-explain-ok">เข้าใจแล้ว</button>`;
       card.querySelector("p").textContent = text;
-      const ms = Math.max(minMs, text.length * 85);
-      card.querySelector(".howto-explain-bar b").animate([{ width: "100%" }, { width: "0%" }], { duration: ms, fill: "forwards" });
-      let t = null;
-      const done = () => { clearTimeout(t); timers.delete(t); cleanups.delete(cancel); card.remove(); alive ? res() : rej(STOP); };
-      const cancel = () => { clearTimeout(t); card.remove(); rej(STOP); };
-      t = setTimeout(done, ms); timers.add(t);
-      card.addEventListener("pointerdown", (e) => { e.stopPropagation(); done(); }, { once: true });
+      const btn = card.querySelector("button");
+      const done = () => { cleanups.delete(cancel); card.remove(); alive ? res() : rej(STOP); };
+      const cancel = () => { card.remove(); rej(STOP); };
+      btn.addEventListener("click", (e) => { e.stopPropagation(); done(); }, { once: true });
       cleanups.add(cancel);
+      btn.focus({ preventScroll: true });
     });
     const shake = (e) => e.animate([{ translate: "0 0" }, { translate: "-6% 0" }, { translate: "6% 0" }, { translate: "-4% 0" }, { translate: "0 0" }], { duration: 380 });
     const api = {
@@ -451,7 +449,7 @@
       };
       const ring = (k) => { const [x, y] = centerOf(k); place(el("span", "howto-ring", box), x - 13, y - 20, 26, 40); };
       const ROUNDS = [
-        { kind: "color", demo: "lamp", mine: "pillow", intro: "จำของในห้องไว้ให้ดี\nแล้วของ 1 ชิ้นจะค่อยๆ เปลี่ยนสี", what: "เปลี่ยนสี" },
+        { kind: "color", demo: "lamp", mine: "pillow", intro: "สังเกตของในห้องไว้ให้ดี\nแล้วของ 1 ชิ้นจะค่อยๆ เปลี่ยนสี", what: "เปลี่ยนสี" },
         { kind: "size", demo: "plant", mine: "bear", intro: "บางครั้งของจะค่อยๆ เปลี่ยนขนาด\nใหญ่ขึ้นหรือเล็กลง", what: "ใหญ่ขึ้น" },
       ];
       const of = ROUNDS.length;
@@ -460,7 +458,7 @@
         const showTask = async (k, kind) => {
           reset();
           p.caption("");
-          for (const n of [3, 2, 1]) { p.caption(`จำห้องนี้ไว้นะ… ${n}`); await p.wait(1000); }
+          for (const n of [3, 2, 1]) { p.caption(`สังเกตห้องนี้ไว้นะ… ${n}`); await p.wait(1000); }
           p.caption("ดูให้ดี อะไรเปลี่ยนไป?");
           change(k, kind);
           await p.wait(3200);
@@ -472,7 +470,7 @@
           p.caption("");
           await p.explain(intro);
           // 2. the task
-          p.say(r + 1, of, "ดูโจทย์: จำห้อง แล้วดูว่าอะไรเปลี่ยน");
+          p.say(r + 1, of, "ดูโจทย์: สังเกตห้อง แล้วดูว่าอะไรเปลี่ยน");
           await showTask(demo, kind);
           // 3. the finger shows the answer
           p.say(r + 1, of, `ดูตัวอย่าง: นิ้วแตะของที่${what}`);
@@ -484,7 +482,7 @@
           await p.fingerAway();
           // 4. the player's turn: another thing changes the same way
           p.say(r + 1, of, `ลองเอง: หาของที่${what} แล้วแตะเลย`);
-          await p.explain("ตาคุณแล้ว!\nจำห้องไว้ แล้วแตะของที่เปลี่ยนไป");
+          await p.explain("ตาคุณแล้ว!\nสังเกตห้องไว้ แล้วแตะของที่เปลี่ยนไป");
           p.say(r + 1, of, `ลองเอง: หาของที่${what} แล้วแตะเลย`);
           await showTask(mine, kind);
           p.caption("แตะของที่เปลี่ยนไป");

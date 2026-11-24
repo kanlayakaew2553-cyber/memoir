@@ -169,11 +169,16 @@
   // Top bar with timer
   const hud = A.topBar(root, { onExit: () => onExit(), timer: true });
 
-  // "จำห้องนี้ไว้!" banner with the 5…1 countdown, then "เริ่ม"
+  // "สังเกตห้องนี้ไว้นะ!" banner with the 5…1 countdown, then "เริ่ม"
   const banner = A.layer(root, "ui-banner");
   const bannerCount = A.uiImg("memorize_count", banner);
   const bannerStart = A.uiImg("memorize_start", banner);
   const countNum = A.uiNum("count", banner, "num-count");
+  // the art says "จำห้องนี้ไว้!"; its words are covered (same orange) with "สังเกตห้องนี้ไว้นะ!"
+  const bannerText = document.createElement("div");
+  bannerText.className = "decor-banner-text";
+  bannerText.textContent = "สังเกตห้องนี้ไว้นะ!";
+  banner.appendChild(bannerText);
 
   // Wrong-tap message
   const wrongMsg = A.uiImg("wrong_minus10", root, "ui-wrong");

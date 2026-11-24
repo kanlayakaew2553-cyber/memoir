@@ -166,6 +166,15 @@
   hint.className = "melody-hint";
   root.appendChild(hint);
 
+  // "โจทย์" frame: a glowing frame with a tag around the records while the song is being shown,
+  // so it is obvious this is the part to watch (not to tap yet)
+  const taskFrame = document.createElement("div");
+  taskFrame.className = "melody-task";
+  taskFrame.hidden = true;
+  taskFrame.innerHTML = '<span class="melody-task-tag">โจทย์ · ดูและฟังให้ดี</span>';
+  els.records.after(taskFrame);
+  const showTask = (on) => { taskFrame.hidden = !on; };
+
   const exitPop = A.exitPopup(root, { onExit: () => exitToLevels(), onContinue: () => resume() });
   const win$ = A.winPopup(root, {
     onNext: () => start(S.level + 1),
@@ -287,6 +296,7 @@
   }
 
   function stop() {
+    showTask(false);
     coachEl.hidden = true;
     if (S) { S.token++; S.phase = "stopped"; }
     recBtns.forEach((b) => b.classList.remove("is-lit", "is-red"));
@@ -303,6 +313,7 @@
       "ยินดีต้อนรับสู่ด่านทดลองเล่น\nด่านนี้ไม่เสียหัวใจ ลองได้เต็มที่\nจะมีคำอธิบายทุกขั้นตอนนะ", token)) return;
     if (S.round === 2 && !await teach("round2", null,
       "รอบต่อไปเพลงจะยาวขึ้นทีละ 1 โน้ต\nแผ่นเสียงจะสว่างทีละแผ่น\nจำลำดับให้ดี แล้วกดตามลำดับเดิม", token)) return;
+    showTask(true);
     await sleep(delay);
     for (let i = 0; i < S.round; i++) {
       if (token !== S.token) return;
@@ -314,7 +325,7 @@
         if (token !== S.token) return;
         clearTimeout(recBtns[b]._t);
         const ok = await teach("light", [recBtns[b]],
-          "แผ่นเสียงที่กะพริบสว่างขึ้นพร้อมเสียงเพลง\nคือแผ่นที่คุณต้องจำไว้\nแล้วกดตามให้ถูก", token);
+          "ตอนที่มีกรอบ \"โจทย์\" คือกำลังโชว์โจทย์\nแผ่นเสียงที่กะพริบสว่างขึ้นพร้อมเสียงเพลง\nคือแผ่นที่คุณต้องจำไว้ แล้วกดตามให้ถูก", token);
         recBtns[b].classList.remove("is-lit");
         if (!ok) return;
         await sleep(CONFIG.gap);
@@ -323,6 +334,7 @@
       await sleep(CONFIG.lightOn + CONFIG.gap);
     }
     if (token !== S.token) return;
+    showTask(false);
     if (S.practice && !S.coached.has("turn")) {
       // the player's turn and the 10-second circle, explained before the time starts
       timer.hidden = false; timerNum.textContent = CONFIG.answerSeconds;
@@ -353,6 +365,7 @@
   }
 
   async function timeUp() {
+    showTask(false);
     const token = ++S.token;
     timer.hidden = true;
     if (S.practice) {   // practice: no losing, explain and try the round again
@@ -414,6 +427,7 @@
   async function wrong() {
     S.misses++;
     S.phase = "wrong";
+    showTask(false);
     const token = ++S.token;
     els.records.classList.add("is-locked");
     playWrong();
@@ -442,6 +456,7 @@
   }
 
   async function win() {
+    showTask(false);
     S.phase = "done";
     S.token++;
     els.records.classList.add("is-locked");
@@ -469,6 +484,7 @@
   }
 
   function lose(reason) {
+    showTask(false);
     if (window.Memoir.sound) window.Memoir.sound.play("lose");   // game-over sound
     S.phase = "done";
     timer.hidden = true;
@@ -499,6 +515,7 @@
     S.token++;
     S.activeMs += performance.now() - S.since;
     S.phase = "paused";
+    showTask(false);
     coachEl.hidden = true;   // shown again when the round replays
     els.records.classList.add("is-locked");
     recBtns.forEach((b) => b.classList.remove("is-lit", "is-red"));
