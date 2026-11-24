@@ -954,6 +954,41 @@ button.rk-card { border: 0; cursor: pointer; }
   pointer-events: none;
 }
 .melody-timer[hidden] { display: none; }
+
+/* ---------- Melody practice coach (js/melody.js): dark screen, a lit hole on the thing explained ---------- */
+.coach { position: absolute; inset: 0; z-index: 45; }
+.coach[hidden] { display: none; }
+.coach.no-spot { background: rgba(20, 8, 2, 0.68); }
+.coach-spot {
+  position: absolute; border-radius: 4cqw; pointer-events: none;
+  box-shadow: 0 0 0 300vmax rgba(20, 8, 2, 0.68), 0 0 0 1cqw rgba(255, 250, 235, 0.95), 0 0 4cqw 1cqw rgba(255, 240, 190, 0.9);
+  animation: coach-spot 1.2s ease-in-out infinite alternate;
+}
+.coach-spot.is-round { border-radius: 50%; }
+.coach.no-spot .coach-spot { display: none; }
+@keyframes coach-spot { to { box-shadow: 0 0 0 300vmax rgba(20, 8, 2, 0.68), 0 0 0 1.4cqw #fff, 0 0 7cqw 2cqw rgba(255, 240, 190, 1); } }
+.coach-hand {
+  position: absolute; z-index: 1; width: 16cqw; translate: -40% 0; pointer-events: none;
+  filter: drop-shadow(0 1cqw 1.4cqw rgba(0, 0, 0, 0.45)); animation: coach-hand 0.9s ease-in-out infinite;
+}
+.coach-hand[hidden] { display: none; }
+@keyframes coach-hand { 50% { transform: translateY(18%); } }
+.coach-box {
+  position: absolute; left: 6%; right: 6%; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 3.4cqw;
+  padding: 4.4cqw 4cqw; border-radius: 4.4cqw; background: #fdf0d5; border: 1cqw solid #cf5a1b;
+  box-shadow: 0 1.4cqw 0 #8a3510, 0 2.4cqh 4cqh rgba(0, 0, 0, 0.45);
+  animation: sign-in 280ms cubic-bezier(.2, 1.3, .4, 1);
+}
+.coach-box p { margin: 0; text-align: center; white-space: pre-line; color: #6a2a0e; font: calc(5.4cqw * var(--ts))/1.35 "Itim", "Sarabun", sans-serif; }
+.coach-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 2.6cqw; }
+.coach-btn {
+  border: 0.8cqw solid #fdf0d5; border-radius: 99px; padding: 2.4cqw 7cqw; cursor: pointer;
+  background: #fff8ea; color: #8a3510; outline: 0.5cqw solid #d8c49a;
+  font: calc(5.4cqw * var(--ts)) "Itim", sans-serif;
+  box-shadow: 0 1cqw 0 #b9a27a;
+}
+.coach-btn.is-primary { background: #43a047; color: #fff; outline-color: #23692a; box-shadow: 0 1cqw 0 #23692a; animation: howto-pulse 1.4s ease-in-out infinite; }
+.coach-btn:active { transform: translateY(0.8cqw); box-shadow: none; animation: none; }
 .melody-timer b { font-weight: 400; font-size: 6.6cqw; }
 .melody-timer small { font-size: 2.8cqw; }
 .melody-timer.is-low { animation: low-pulse 0.6s ease-in-out infinite; color: #c0392b;
@@ -995,6 +1030,16 @@ button.rk-card { border: 0; cursor: pointer; }
 .howto-tabs:not([hidden]) ~ .howto-demo { aspect-ratio: 16 / 11; }
 .howto-steps { margin: 0; padding: 0 0 0 6cqw; text-align: left; font-size: calc(4.2cqw * var(--ts)); line-height: 1.35; align-self: stretch; }
 .howto-steps li { margin: 0.6cqw 0; }
+/* buttons at the bottom: [เข้าเล่นด่านได้เลย] [ทดลองเล่น] (Melody) or just [ทดลองเล่น] */
+.howto-actions { margin-top: auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 2.6cqw; }
+.howto-actions[hidden], .howto-start[hidden] { display: none; }
+.howto-actions .howto-go { margin-top: 0; }
+.howto-start {
+  border: 0.8cqw solid #fdf0d5; border-radius: 99px; padding: 2.2cqw 6cqw; cursor: pointer;
+  background: #43a047; color: #fff; font: calc(5.4cqw * var(--ts)) "Itim", sans-serif;
+  box-shadow: 0 1cqw 0 #23692a;
+}
+.howto-start:active { transform: translateY(0.6cqw); box-shadow: 0 0.4cqw 0 #23692a; }
 /* ทดลองเล่น (practice) */
 .howto-steps[hidden], .howto-go[hidden], .howto-say[hidden], .howto-done[hidden], .howto-zone[hidden] { display: none; }
 .howto-demo.is-play { touch-action: none; cursor: pointer; user-select: none; -webkit-user-select: none; }

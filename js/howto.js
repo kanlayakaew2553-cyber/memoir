@@ -4,7 +4,9 @@
  *   - Shown by itself every time level 1 of a game is started from the level map.
  *   - "?" button on each game's level map (shows that game).
  *   - Frame: assets/ui/web/win_panel.png (Drive "ผ่านแล้ว_กรอบหลัง"); X at the top right closes it.
- *   - "ทดลองเล่น" turns the same popup into a short practice round (PRACTICE below): the finger
+ *   - Melody: two buttons, "เข้าเล่นด่านได้เลย" (level 1) and "ทดลองเล่น", which opens a practice
+ *     level in the real game screen that pauses and explains every step (js/melody.js).
+ *   - Decor / Market: "ทดลองเล่น" turns the same popup into a short practice round (PRACTICE below): the finger
  *     shows each step, a step text explains it, and the player does it. At the end "เล่นเลย"
  *     starts level 1 of that game.
  */
@@ -27,6 +29,7 @@
       title: "สร้างดนตรีและเสียงเพลง",
       steps: ["ฟังเพลงและดูแผ่นเสียงที่สว่างขึ้น", "แตะแผ่นเสียงตามลำดับเดิม ภายใน 10 วินาที", "แต่ละรอบเพลงจะยาวขึ้นทีละโน้ต"],
       demo: demoMelody,
+      gamePractice: true,   // ทดลองเล่น = a practice level in the real game screen (js/melody.js)
     },
     market: {
       title: "ตลาดนัดเก็บผักผลไม้",
@@ -52,7 +55,10 @@
         <div class="howto-demo" aria-hidden="true"></div>
         <ol class="howto-steps"></ol>
         <p class="howto-say" hidden></p>
-        <button type="button" class="howto-go">ทดลองเล่น</button>
+        <div class="howto-actions">
+          <button type="button" class="howto-start">เข้าเล่นด่านได้เลย</button>
+          <button type="button" class="howto-go">ทดลองเล่น</button>
+        </div>
       </div>
       <div class="howto-done" hidden>
         <p>เยี่ยมมาก!<br>พร้อมเล่นจริงแล้ว</p>
@@ -63,13 +69,14 @@
   const $ = (s) => modal.querySelector(s);
   const demoBox = $(".howto-demo"), tabs = $(".howto-tabs"), steps = $(".howto-steps"), go = $(".howto-go"), title = $(".howto-title");
   const say = $(".howto-say"), done = $(".howto-done"), card = $(".howto-card");
+  const actions = $(".howto-actions"), startBtn = $(".howto-start");
 
   let current = null, stopDemo = null, onDone = null, firstGame = null;
 
   // back to the "how to play" view (looping demo + 3 steps + ทดลองเล่น)
   function resetView() {
     card.classList.remove("is-practice");
-    steps.hidden = false; go.hidden = false; say.hidden = true; done.hidden = true;
+    steps.hidden = false; actions.hidden = false; say.hidden = true; done.hidden = true;
     demoBox.className = "howto-demo";
   }
 
@@ -78,6 +85,7 @@
     resetView();
     const g = GAMES[game];
     title.textContent = g.title;
+    startBtn.hidden = !g.gamePractice;   // "เข้าเล่นด่านได้เลย" next to ทดลองเล่น
     steps.innerHTML = g.steps.map((s) => `<li>${s}</li>`).join("");
     tabs.querySelectorAll("button").forEach((b) => b.classList.toggle("is-on", b.dataset.g === game));
     if (stopDemo) stopDemo();
@@ -119,7 +127,11 @@
     else if (M[game] && M[game].start) M[game].start(1);  // opened from "?": go to level 1
   }
   $(".howto-x").addEventListener("click", () => close(false));
-  go.addEventListener("click", () => startPractice(current));
+  go.addEventListener("click", () => {
+    if (GAMES[current].gamePractice) { const g = current; close(false); M[g].practice(); }   // practice level in the game
+    else startPractice(current);                                                             // practice inside this popup
+  });
+  startBtn.addEventListener("click", () => close(true));
   $(".howto-play").addEventListener("click", () => close(true));
 
   // ---------- ทดลองเล่น: the same popup becomes a small practice round ----------
@@ -127,7 +139,7 @@
     if (stopDemo) stopDemo();
     demoBox.innerHTML = "";
     card.classList.add("is-practice");
-    steps.hidden = true; go.hidden = true; say.hidden = false; done.hidden = true;
+    steps.hidden = true; actions.hidden = true; say.hidden = false; done.hidden = true;
     title.textContent = "ทดลองเล่น";
     stopDemo = PRACTICE[game](demoBox, () => {
       done.hidden = false;
@@ -413,89 +425,6 @@
   }
 
   const PRACTICE = {
-    // ---------- Melody: round 1 = 1 record, round 2 = 2 records in order ----------
-    melody(box, finish) {
-      box.classList.add("is-melody", "is-play");
-      const NOTES = ["C4", "D4", "E4", "F4", "G4", "A4"];
-      const recs = [];
-      for (let i = 0; i < 6; i++) {
-        const col = i % 3, row = Math.floor(i / 3);
-        recs.push(place(pic(`assets/melody/web/rec${i + 1}.png`, "howto-rec", box), 7 + col * 30, 6 + row * 38, 26, 34));
-      }
-      const center = (i) => { const col = i % 3, row = Math.floor(i / 3); return [7 + col * 30 + 13, 6 + row * 38 + 17]; };
-      const mel = M.melody || {};
-      const light = (i, ms) => {
-        recs[i].animate([{ filter: "brightness(1)" }, { filter: "brightness(1.6) drop-shadow(0 0 6px #ffe680)", offset: 0.2 }, { filter: "brightness(1.6) drop-shadow(0 0 6px #ffe680)", offset: 0.8 }, { filter: "brightness(1)" }], { duration: ms });
-        try { if (mel.playNote) mel.playNote(NOTES[i], ms / 1000 * 0.8); } catch (e) { /* no sound */ }
-      };
-      const ROUNDS = [
-        { seq: [1], intro: "แผ่นเสียงจะสว่างขึ้นพร้อมเสียงเพลง\nจำไว้ว่าแผ่นไหนสว่าง" },
-        { seq: [1, 3], intro: "รอบต่อไปเพลงจะยาวขึ้น 1 โน้ต\nจำแผ่นที่สว่างทั้ง 2 แผ่น ตามลำดับ" },
-      ];
-      const of = ROUNDS.length;
-
-      return practice(box, async (p) => {
-        const showTask = async (seq) => {
-          p.caption("ดูและฟังให้ดี");
-          await p.wait(800);
-          for (const i of seq) { light(i, 1100); await p.wait(1600); }
-        };
-        for (let r = 0; r < of; r++) {
-          const { seq, intro } = ROUNDS[r];
-          // 1. explanation
-          p.say(r + 1, of, "อ่านคำอธิบาย");
-          p.caption("");
-          await p.explain(intro);
-          // 2. the task
-          p.say(r + 1, of, "ดูโจทย์: แผ่นเสียงที่สว่างขึ้น");
-          await showTask(seq);
-          // 3. the finger shows the answer
-          p.say(r + 1, of, "ดูตัวอย่าง: นิ้วแตะแผ่นเสียงตามลำดับที่สว่าง");
-          p.caption("ดูนิ้วแตะให้ดูนะ");
-          for (const i of seq) {
-            await p.fingerTap(...center(i));
-            light(i, 600);
-            await p.wait(650);
-          }
-          await p.fingerAway();
-          p.caption("แบบนี้เลย!");
-          await p.wait(1000);
-          // 4. the player's turn: the same task again
-          p.say(r + 1, of, "ลองเอง: แตะแผ่นเสียงตามลำดับที่สว่าง");
-          await p.explain(r === of - 1
-            ? "ตาคุณแล้ว!\nดูโจทย์อีกครั้ง แล้วแตะตามลำดับ\n(เกมจริงต้องแตะให้ทันใน 10 วินาที)"
-            : "ตาคุณแล้ว!\nดูโจทย์อีกครั้ง แล้วแตะแผ่นที่สว่าง");
-          p.say(r + 1, of, "ลองเอง: แตะแผ่นเสียงตามลำดับที่สว่าง");
-          await showTask(seq);
-          let help = false;
-          for (;;) {
-            p.caption("ถึงตาคุณ แตะเลย");
-            let ok = true;
-            for (const i of seq) {
-              if (help) p.point(...center(i));
-              const hint = p.later(5000, () => { p.point(...center(i)); p.caption("แตะแผ่นที่นิ้วชี้นะ"); });
-              const hit = await p.waitTap(recs);
-              hint.cancel(); p.unpoint();
-              if (hit !== recs[i]) {
-                p.shake(hit);
-                try { if (mel.playWrong) mel.playWrong(); } catch (e) { /* no sound */ }
-                ok = false; break;
-              }
-              light(i, 600);
-              await p.wait(350);
-            }
-            if (ok) break;
-            help = true;
-            p.caption("ไม่เป็นไรนะ ดูอีกครั้ง นิ้วจะช่วยชี้");
-            await p.wait(1800);
-            await showTask(seq);
-          }
-          p.caption(r === of - 1 ? "เก่งมาก! ถูกต้องทั้งหมด" : "ถูกต้อง! เก่งมาก");
-          await p.wait(1600);
-        }
-      }, finish);
-    },
-
     // ---------- Decor: round 1 = something changes colour, round 2 = something changes size ----------
     decor(box, finish) {
       box.classList.add("is-decor", "is-play");

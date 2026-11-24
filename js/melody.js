@@ -192,11 +192,80 @@
     return seq;
   }
 
-  function start(level) {
-    if (!window.Memoir.wallet.check(() => start(level))) return;   // out of hearts
+  // =====================================================================
+  // Coach (ด่านทดลองเล่น): freezes the game, darkens everything except what it talks about,
+  // explains it, and waits for "เข้าใจแล้ว".
+  // =====================================================================
+  const coachEl = document.createElement("div");
+  coachEl.className = "coach";
+  coachEl.hidden = true;
+  coachEl.innerHTML = `
+    <div class="coach-spot"></div>
+    <img class="coach-hand" src="assets/icons/web/hand.png" alt="" draggable="false">
+    <div class="coach-box" role="dialog" aria-live="polite"><p></p><div class="coach-btns"></div></div>`;
+  els.screen.appendChild(coachEl);
+  const coachSpot = coachEl.querySelector(".coach-spot"), coachHand = coachEl.querySelector(".coach-hand");
+  const coachBox = coachEl.querySelector(".coach-box"), coachText = coachEl.querySelector("p"), coachBtns = coachEl.querySelector(".coach-btns");
+
+  // resolves with the index of the button pressed
+  function coach(targets, text, { buttons = ["เข้าใจแล้ว"], hand = false, round = false } = {}) {
+    return new Promise((resolve) => {
+      const scr = els.screen.getBoundingClientRect();
+      const pct = (v, size) => (v / size * 100) + "%";
+      let r = null;
+      if (targets && targets.length) {
+        const rs = targets.map((t) => t.getBoundingClientRect());
+        const pad = scr.width * 0.02;
+        r = {
+          l: Math.min(...rs.map((x) => x.left)) - pad, t: Math.min(...rs.map((x) => x.top)) - pad,
+          r: Math.max(...rs.map((x) => x.right)) + pad, b: Math.max(...rs.map((x) => x.bottom)) + pad,
+        };
+        Object.assign(coachSpot.style, {
+          left: pct(r.l - scr.left, scr.width), top: pct(r.t - scr.top, scr.height),
+          width: pct(r.r - r.l, scr.width), height: pct(r.b - r.t, scr.height),
+        });
+      }
+      coachEl.classList.toggle("no-spot", !r);
+      coachSpot.classList.toggle("is-round", round);
+      // the explanation goes under the spot when it is high on the screen, above it when low
+      coachBox.style.top = coachBox.style.bottom = "";
+      if (!r) coachBox.style.top = "34%";
+      else if ((r.t + r.b) / 2 - scr.top < scr.height * 0.5) coachBox.style.top = pct(r.b - scr.top + scr.height * 0.02, scr.height);
+      else coachBox.style.bottom = pct(scr.bottom - r.t + scr.height * 0.02, scr.height);
+      coachHand.hidden = !(hand && r);
+      if (hand && r) Object.assign(coachHand.style, { left: pct((r.l + r.r) / 2 - scr.left, scr.width), top: pct((r.t + r.b) / 2 - scr.top, scr.height) });
+      coachText.textContent = text;
+      coachBtns.innerHTML = "";
+      buttons.forEach((label, i) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "coach-btn" + (i === 0 ? " is-primary" : "");
+        b.textContent = label;
+        b.addEventListener("click", () => { coachEl.hidden = true; resolve(i); });
+        coachBtns.appendChild(b);
+      });
+      coachEl.hidden = false;
+      coachBtns.firstChild.focus({ preventScroll: true });
+    });
+  }
+  // shows a coach card once per practice (key); false if the game moved on meanwhile (exit / pause)
+  async function teach(key, targets, text, token, opts) {
+    if (!S || !S.practice || S.coached.has(key)) return true;
+    await coach(targets, text, opts);
+    if (!S || token !== S.token) return false;
+    S.coached.add(key);
+    return true;
+  }
+
+  // ด่านทดลองเล่น: 2 short rounds, no hearts, nothing saved, every step explained
+  function practice() { start(1, { practice: true }); }
+
+  function start(level, opts = {}) {
+    const isPractice = !!opts.practice;
+    if (!isPractice && !window.Memoir.wallet.check(() => start(level))) return;   // out of hearts
     stop();
     ctx();   // unlock sound (this runs from a tap)
-    const n = notesFor(level);
+    const n = isPractice ? 2 : notesFor(level);
     const songs = MELODIES.filter((m) => m.notes.length >= n);
     const song = (songs.length ? songs : MELODIES)[Math.floor(Math.random() * (songs.length || MELODIES.length))];
     S = {
@@ -206,8 +275,9 @@
       round: 1, pos: 0, misses: 0,
       phase: "show", token: 0,
       activeMs: 0, since: performance.now(),
+      practice: isPractice, coached: new Set(),
     };
-    hud.setLevel(level);
+    hud.setLevel(isPractice ? "ฝึก" : level);
     hud.setStars(3);
     triesNum.textContent = CONFIG.maxMisses;
     hidePopups();
@@ -217,6 +287,7 @@
   }
 
   function stop() {
+    coachEl.hidden = true;
     if (S) { S.token++; S.phase = "stopped"; }
     recBtns.forEach((b) => b.classList.remove("is-lit", "is-red"));
   }
@@ -228,13 +299,37 @@
     S.pos = 0;
     els.records.classList.add("is-locked");
     hint.textContent = `ฟังและดูให้ดีนะ (รอบ ${S.round}/${S.n})`;
+    if (S.round === 1 && !await teach("intro", null,
+      "ยินดีต้อนรับสู่ด่านทดลองเล่น\nด่านนี้ไม่เสียหัวใจ ลองได้เต็มที่\nจะมีคำอธิบายทุกขั้นตอนนะ", token)) return;
+    if (S.round === 2 && !await teach("round2", null,
+      "รอบต่อไปเพลงจะยาวขึ้นทีละ 1 โน้ต\nแผ่นเสียงจะสว่างทีละแผ่น\nจำลำดับให้ดี แล้วกดตามลำดับเดิม", token)) return;
     await sleep(delay);
     for (let i = 0; i < S.round; i++) {
       if (token !== S.token) return;
-      light(S.buttons[i], S.notes[i], CONFIG.lightOn);
+      const b = S.buttons[i];
+      light(b, S.notes[i], CONFIG.lightOn);
+      if (S.practice && !S.coached.has("light")) {
+        // the first lit record: freeze it lit, darken the rest, explain
+        await sleep(0.4);
+        if (token !== S.token) return;
+        clearTimeout(recBtns[b]._t);
+        const ok = await teach("light", [recBtns[b]],
+          "แผ่นเสียงที่กะพริบสว่างขึ้นพร้อมเสียงเพลง\nคือแผ่นที่คุณต้องจำไว้\nแล้วกดตามให้ถูก", token);
+        recBtns[b].classList.remove("is-lit");
+        if (!ok) return;
+        await sleep(CONFIG.gap);
+        continue;
+      }
       await sleep(CONFIG.lightOn + CONFIG.gap);
     }
     if (token !== S.token) return;
+    if (S.practice && !S.coached.has("turn")) {
+      // the player's turn and the 10-second circle, explained before the time starts
+      timer.hidden = false; timerNum.textContent = CONFIG.answerSeconds;
+      timer.style.setProperty("--p", "1"); timer.classList.remove("is-low");
+      if (!await teach("turn", [recBtns[S.buttons[0]]], "ถึงตาคุณแล้ว!\nแตะแผ่นเสียงที่สว่างเมื่อกี้", token, { hand: true })) return;
+      if (!await teach("timer", [timer], `ต้องแตะให้ครบภายใน ${CONFIG.answerSeconds} วินาที\nวงกลมนี้บอกเวลาที่เหลือ`, token, { round: true })) return;
+    }
     S.phase = "input";
     els.records.classList.remove("is-locked");
     hint.textContent = `ถึงตาคุณแล้ว กดตามให้ครบ ${S.round} แผ่น`;
@@ -257,9 +352,17 @@
     tick();
   }
 
-  function timeUp() {
-    S.token++;
+  async function timeUp() {
+    const token = ++S.token;
     timer.hidden = true;
+    if (S.practice) {   // practice: no losing, explain and try the round again
+      playWrong();
+      S.phase = "wrong";
+      els.records.classList.add("is-locked");
+      await coach(null, `หมดเวลาแล้ว\nต้องแตะให้ครบภายใน ${CONFIG.answerSeconds} วินาที\nไม่เป็นไร ลองรอบนี้ใหม่อีกครั้งนะ`);
+      if (S && token === S.token) playRound(CONFIG.retryPause);
+      return;
+    }
     playWrong();
     if (navigator.vibrate) navigator.vibrate(150);
     els.flash.classList.remove("is-on"); void els.flash.offsetWidth; els.flash.classList.add("is-on");
@@ -280,14 +383,32 @@
     if (i === S.buttons[S.pos]) {
       light(i, S.notes[S.pos], CONFIG.tapLight);
       S.pos++;
-      if (S.pos === S.round) {
-        if (S.round === S.n) { win(); return; }
-        S.round++;
-        playRound();
-      }
+      if (S.practice && !S.coached.has("right")) { explainRight(i); return; }
+      afterRight();
     } else {
       wrong();
     }
+  }
+  function afterRight() {
+    if (S.pos === S.round) {
+      if (S.round === S.n) { win(); return; }
+      S.round++;
+      playRound();
+    }
+  }
+  // practice: the first right tap is explained (the clock stops meanwhile)
+  async function explainRight(i) {
+    const token = ++S.token;
+    S.phase = "coach";
+    els.records.classList.add("is-locked");
+    await sleep(0.5);
+    if (token !== S.token) return;
+    if (!await teach("right", [recBtns[i]], "ถูกต้อง!\nแตะถูกแล้ว แผ่นเสียงจะสว่างและมีเสียงเพลง", token)) return;
+    if (S.pos < S.round) {   // more records to tap in this round
+      S.phase = "input";
+      els.records.classList.remove("is-locked");
+      runAnswerTimer(token);
+    } else afterRight();
   }
 
   async function wrong() {
@@ -305,6 +426,13 @@
     await sleep(CONFIG.redFlash);
     recBtns.forEach((b) => b.classList.remove("is-red"));
     if (token !== S.token) return;
+    if (S.practice) {   // practice never ends by mistakes
+      if (!await teach("wrong", [tries],
+        "แตะผิด แผ่นเสียงจะกะพริบเป็นสีแดง\nแล้วเพลงรอบนั้นจะเล่นให้ดูใหม่\nช่องนี้บอกว่าผิดได้อีกกี่ครั้ง\n(ด่านทดลองไม่เสียหัวใจ)", token)) return;
+      if (S.misses >= CONFIG.maxMisses) { S.misses = CONFIG.maxMisses - 1; triesNum.textContent = 1; hud.setStars(1); }
+      playRound(CONFIG.retryPause);
+      return;
+    }
     if (S.misses >= CONFIG.maxMisses) { lose(); return; }
     playRound(CONFIG.retryPause);   // same round again
   }
@@ -313,11 +441,21 @@
     return Math.round((S.activeMs + (performance.now() - S.since)) / 1000);
   }
 
-  function win() {
+  async function win() {
     S.phase = "done";
     S.token++;
     els.records.classList.add("is-locked");
     hint.textContent = "เก่งมาก!";
+    if (S.practice) {   // nothing is saved; go to the real level 1 or practise again
+      const my = S;
+      await sleep(0.8);
+      if (S !== my) return;
+      if (window.Memoir.sound) window.Memoir.sound.play("win");
+      const pick = await coach(null, "เก่งมาก! ผ่านด่านทดลองเล่นแล้ว\nพร้อมเล่นจริงแล้วใช่ไหม?", { buttons: ["เริ่มเล่นด่าน 1", "ทดลองเล่นอีกครั้ง"] });
+      if (S !== my) return;
+      if (pick === 0) start(1); else practice();
+      return;
+    }
     const stars = starsFor(S.misses);
     window.Memoir.progress.setStars("melody", S.level, stars);
     window.Memoir.history.add("melody", S.level, { win: true, sec: secondsPlayed(), miss: S.misses, stars });
@@ -361,6 +499,7 @@
     S.token++;
     S.activeMs += performance.now() - S.since;
     S.phase = "paused";
+    coachEl.hidden = true;   // shown again when the round replays
     els.records.classList.add("is-locked");
     recBtns.forEach((b) => b.classList.remove("is-lit", "is-red"));
     return true;
@@ -383,5 +522,5 @@
     else if (!popupOpen() && S.phase === "paused") resume();
   });
 
-  window.Memoir.melody = { start, stop, CONFIG, notesFor, playNote, playWrong, debug: { state: () => S } };
+  window.Memoir.melody = { start, stop, practice, CONFIG, notesFor, playNote, playWrong, debug: { state: () => S } };
 })();

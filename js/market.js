@@ -656,7 +656,21 @@
       c.strokeStyle = "rgba(255,250,235,0.85)";
       c.beginPath(); c.moveTo(S.heldX, HOLD_Y + KINDS[S.held.t].bound); c.lineTo(S.heldX, BASKET.bottom); c.stroke();
       c.restore();
+      // blinking white aura so the eye goes to the fruit to drag
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 1000 * Math.PI * 2 * 1.2);
+      const r = KINDS[S.held.t].bound * (1.5 + 0.25 * pulse);
+      const glow = c.createRadialGradient(S.heldX, HOLD_Y, r * 0.3, S.heldX, HOLD_Y, r);
+      glow.addColorStop(0, `rgba(255,255,255,${0.55 + 0.4 * pulse})`);
+      glow.addColorStop(0.55, `rgba(255,255,245,${0.3 + 0.35 * pulse})`);
+      glow.addColorStop(1, "rgba(255,255,255,0)");
+      c.save();
+      c.fillStyle = glow;
+      c.beginPath(); c.arc(S.heldX, HOLD_Y, r, 0, Math.PI * 2); c.fill();
+      // white rim hugging the fruit's own outline
+      c.shadowColor = `rgba(255,255,255,${0.75 + 0.25 * pulse})`;
+      c.shadowBlur = (3 + 4 * pulse) * scale;
       drawFruit(c, S.held.t, S.heldX, HOLD_Y, 0, 1, 0, 1);
+      c.restore();
     }
 
     // "+1" / "คอมโบ!"
