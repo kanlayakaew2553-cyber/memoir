@@ -121,19 +121,93 @@
       <span class="profile-pic big is-${me.role}">${pic}</span>
       <h2>${esc(me.name)}</h2>
       <p class="profile-mail">${esc(me.email)}</p>
-      <p class="profile-role">สมัครเป็น <b>${ROLE_TXT[me.role]}</b></p>
+      <p class="profile-role">สมัครเป็น <b>${ROLE_TXT[me.role]}</b>${me.staff ? ` · <b class="profile-staff">${ACC.admin.STAFF_TXT[me.staff]}</b>` : ""}</p>
+      <div class="profile-links">
+        ${me.staff ? '<button type="button" class="modal-btn profile-office" data-act="office">ระบบหลังบ้าน</button>' : ""}
+        <button type="button" class="modal-btn" data-act="support">ติดต่อทีมงาน <span class="support-badge" hidden></span></button>
+      </div>
       <div class="modal-buttons">
         <button type="button" class="modal-btn" data-act="out">ออกจากระบบ</button>
         <button type="button" class="modal-btn is-primary" data-act="close">ปิด</button>
       </div></div>`;
     document.getElementById("stage").append(menu);
-    chip.addEventListener("click", () => { menu.hidden = false; });
+    const badge = menu.querySelector(".support-badge");
+    const chipBadge = document.createElement("span");
+    chipBadge.className = "support-badge on-chip";
+    chip.append(chipBadge);
+    function syncBadge() {
+      const n = ACC.supportUnread();
+      [badge, chipBadge].forEach((b) => { b.hidden = !n; b.textContent = n; });
+    }
+    syncBadge();
+    chip.addEventListener("click", () => { syncBadge(); menu.hidden = false; });
     menu.addEventListener("click", (e) => { if (e.target === menu) menu.hidden = true; });
     menu.querySelector('[data-act="close"]').addEventListener("click", () => { menu.hidden = true; });
     menu.querySelector('[data-act="out"]').addEventListener("click", () => {
       ACC.signOut();
       location.reload();
     });
+    const office = menu.querySelector('[data-act="office"]');
+    if (office) office.addEventListener("click", () => { location.href = "admin.html"; });
+    menu.querySelector('[data-act="support"]').addEventListener("click", () => { menu.hidden = true; openSupport(); });
+
+    // ---------- ติดต่อทีมงาน: questions to the game team, answered from the back office ----------
+    const sup = document.createElement("div");
+    sup.className = "modal support-modal";
+    sup.hidden = true;
+    sup.innerHTML = `<div class="modal-card support-card" role="dialog" aria-modal="true" aria-label="ติดต่อทีมงาน">
+      <button type="button" class="shop-x" data-act="close" aria-label="ปิด">✕</button>
+      <h2>ติดต่อทีมงาน</h2>
+      <p class="support-sub">มีคำถามหรือปัญหาการเล่น พิมพ์ถามได้เลย ทีมงานจะตอบกลับที่นี่</p>
+      <div class="support-list" aria-live="polite"></div>
+      <form class="support-form"><input type="text" maxlength="500" placeholder="พิมพ์ข้อความ…" aria-label="ข้อความถึงทีมงาน"><button type="submit" class="modal-btn is-primary">ส่ง</button></form>
+    </div>`;
+    document.getElementById("stage").append(sup);
+    const supList = sup.querySelector(".support-list"), supInput = sup.querySelector("input");
+    const hhmm = (t) => new Date(t).toLocaleString("th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    function renderSupport() {
+      const msgs = ACC.supportThread();
+      supList.innerHTML = msgs.length
+        ? msgs.map((m) => `<div class="support-msg ${m.staff ? "is-staff" : "is-me"}">${m.staff ? "<b>ทีมงาน</b>" : ""}<p>${esc(m.text)}</p><small>${hhmm(m.t)}</small></div>`).join("")
+        : '<p class="support-empty">ยังไม่มีข้อความ</p>';
+      supList.scrollTop = supList.scrollHeight;
+    }
+    function openSupport() { renderSupport(); ACC.supportSeen(); syncBadge(); sup.hidden = false; }
+    sup.querySelector('[data-act="close"]').addEventListener("click", () => { sup.hidden = true; });
+    sup.addEventListener("click", (e) => { if (e.target === sup) sup.hidden = true; });
+    sup.querySelector("form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (ACC.postSupport(supInput.value)) { supInput.value = ""; renderSupport(); }
+    });
+    // replies written in the back office (another tab) show up straight away
+    window.addEventListener("storage", () => { syncBadge(); if (!sup.hidden) { renderSupport(); ACC.supportSeen(); } });
+
+    // ---------- คำเตือนจากทีมงาน: shown once, until the player presses "รับทราบ" ----------
+    const warns = ACC.myWarnings();
+    if (warns.length) {
+      const wm = document.createElement("div");
+      wm.className = "modal warn-modal";
+      wm.innerHTML = `<div class="modal-card warn-card" role="alertdialog" aria-modal="true" aria-label="คำเตือนจากทีมงาน">
+        <h2>คำเตือนจากทีมงาน</h2>
+        ${warns.map((w) => `<p class="warn-text">${esc(w.text)}</p><small class="warn-when">${hhmm(w.t)}</small>`).join("")}
+        <div class="modal-buttons"><button type="button" class="modal-btn is-primary">รับทราบ</button></div>
+      </div>`;
+      document.getElementById("stage").append(wm);
+      wm.querySelector("button").addEventListener("click", () => { ACC.ackWarnings(); wm.remove(); });
+    }
+  }
+
+  // Signed out because of a ban: say why
+  const banNote = ACC.takeBanNote();
+  if (banNote) {
+    const bm = document.createElement("div");
+    bm.className = "modal warn-modal";
+    bm.innerHTML = `<div class="modal-card warn-card" role="alertdialog" aria-modal="true" aria-label="บัญชีถูกระงับ">
+      <h2>บัญชีถูกระงับ</h2><p class="warn-text"></p>
+      <div class="modal-buttons"><button type="button" class="modal-btn is-primary">ตกลง</button></div></div>`;
+    bm.querySelector(".warn-text").textContent = banNote;
+    document.getElementById("stage").append(bm);
+    bm.querySelector("button").addEventListener("click", () => bm.remove());
   }
 
   function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }

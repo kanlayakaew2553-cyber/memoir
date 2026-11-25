@@ -1200,7 +1200,7 @@ button.rk-card { border: 0; cursor: pointer; }
 .login-sub span { width: 45%; text-align: center; }
 .login-msg {
   position: absolute; left: 8%; right: 8%; top: 77%; margin: 0; padding: 2cqw 3cqw; border-radius: 3cqw;
-  background: #fff3ea; color: #b3261e; border: 0.6cqw solid #e0612f; text-align: center; font-size: calc(4.2cqw * var(--ts));
+  background: #fff3ea; color: #b3261e; border: 0.6cqw solid #e0612f; text-align: center; white-space: pre-line; font-size: calc(4.2cqw * var(--ts));
   opacity: 0; transform: translateY(1cqh); transition: opacity 200ms, transform 200ms; pointer-events: none;
 }
 .login-msg.is-shown { opacity: 1; transform: none; }
@@ -1277,6 +1277,40 @@ button.rk-card { border: 0; cursor: pointer; }
 .profile-modal h2 { font-weight: 400; color: #8a3510; word-break: break-all; }
 .profile-mail { font-size: calc(4cqw * var(--ts)) !important; color: #7a5a3a; word-break: break-all; }
 .profile-role b { color: #e0612f; font-weight: 400; }
+.profile-role .profile-staff { color: #fff; background: #7a2e0e; padding: 0.2cqw 2cqw; border-radius: 99px; }
+.profile-links { display: flex; flex-direction: column; gap: 2cqw; margin: 2cqw 0; }
+.profile-links .modal-btn { position: relative; width: 100%; }
+.profile-office { background: #7a2e0e !important; color: #fdf0d5 !important; }
+/* red count of unread team replies (account menu + profile chip) */
+.support-badge {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 6cqw; height: 6cqw; padding: 0 1.4cqw;
+  border-radius: 99px; background: #d63a2a; color: #fff; border: 0.5cqw solid #fff; font: 3.6cqw/1 "Itim", sans-serif; vertical-align: middle;
+}
+.support-badge[hidden] { display: none; }
+.support-badge.on-chip { position: absolute; right: -1.6cqw; top: -1.6cqw; }
+/* ติดต่อทีมงาน */
+.support-modal, .warn-modal { z-index: 32; }
+.support-card { position: relative; width: 90cqw; max-height: 92%; display: flex; flex-direction: column; gap: 2cqw; font-family: "Itim", "Sarabun", sans-serif; text-align: left; }
+.support-card h2 { margin: 0; text-align: center; font-weight: 400; color: #8a3510; }
+.support-sub { margin: 0; text-align: center; color: #7a5a3a; font-size: calc(3.8cqw * var(--ts)) !important; }
+.support-list { flex: 1; min-height: 40cqw; max-height: 60cqh; overflow-y: auto; display: flex; flex-direction: column; gap: 2cqw; padding: 2cqw; border-radius: 3cqw; background: #f6ead0; }
+.support-empty { margin: auto; color: #a08a70; font-size: calc(4cqw * var(--ts)) !important; }
+.support-msg { max-width: 82%; padding: 2cqw 3cqw; border-radius: 3cqw; background: #fff; color: #4a2410; }
+.support-msg.is-me { align-self: flex-end; background: #e0612f; color: #fff; }
+.support-msg b { display: block; color: #8a3510; font-weight: 400; font-size: calc(3.4cqw * var(--ts)); }
+.support-msg p { margin: 0; font-size: calc(4.2cqw * var(--ts)) !important; white-space: pre-wrap; word-break: break-word; }
+.support-msg small { display: block; margin-top: 0.6cqw; opacity: 0.7; font-size: calc(3cqw * var(--ts)); text-align: right; }
+.support-form { display: flex; gap: 2cqw; }
+.support-form input {
+  flex: 1; min-width: 0; padding: 2.4cqw 3cqw; border: 0.6cqw solid #d8c49a; border-radius: 99px; background: #fff; color: #4a2410;
+  font: max(16px, calc(4.2cqw * var(--ts))) "Itim", "Sarabun", sans-serif;
+}
+.support-form .modal-btn { flex: none; padding-left: 5cqw; padding-right: 5cqw; }
+/* คำเตือนจากทีมงาน / บัญชีถูกระงับ */
+.warn-card { font-family: "Itim", "Sarabun", sans-serif; border: 1cqw solid #d63a2a !important; }
+.warn-card h2 { margin: 0 0 2cqw; font-weight: 400; color: #b3261e; }
+.warn-text { margin: 1.4cqw 0 0; padding: 2.6cqw 3cqw; border-radius: 3cqw; background: #fff3ea; color: #4a2410; white-space: pre-line; font-size: calc(4.4cqw * var(--ts)) !important; }
+.warn-when { display: block; color: #a08a70; font-size: calc(3.2cqw * var(--ts)); text-align: right; }
 .rk-doc-name { font-size: calc(5cqw * var(--ts)) !important; color: #5a2e0e; margin: 0 !important; }
 
 /* ---------- Shop (js/wallet.js) ---------- */

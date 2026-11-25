@@ -198,5 +198,13 @@
   function showOut(onBought) { openShop({ out: true, onBought }); }
   wallet.openShop = openShop;
 
+  // Hearts / coins changed by staff in the back office (another tab): take the new amounts
+  window.addEventListener("storage", () => {
+    try {
+      const fresh = JSON.parse(localStorage.getItem(KEY));
+      if (fresh && (fresh.hearts !== w.hearts || fresh.coins !== w.coins)) { w = fresh; update(); }
+    } catch (e) { /* ignore */ }
+  });
+
   M.wallet = wallet;
 })();
