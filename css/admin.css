@@ -43,7 +43,16 @@ small { color: var(--soft); }
 
 /* shell */
 .top { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
-.top-brand { display: flex; align-items: baseline; gap: 10px; }
+.top-brand { display: flex; align-items: center; gap: 12px; }
+/* big orange "กลับเข้าเกม" with a house, always first at the top left */
+.home-btn {
+  min-height: 46px; padding: 8px 18px 8px 14px; gap: 8px;
+  background: var(--brand); border-color: var(--brand); color: #fff; font-size: 16px;
+  box-shadow: 0 3px 0 var(--brand-dark);
+}
+.home-btn:hover:not(:disabled) { background: var(--brand-dark); border-color: var(--brand-dark); }
+.home-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--brand-dark); }
+.gate-home { margin-top: 4px; }
 .top-title { font: 20px "Itim", sans-serif; color: var(--brand-dark); }
 .top-me { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .me-mail { font-size: 14px; color: var(--soft); word-break: break-all; }

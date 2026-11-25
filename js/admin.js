@@ -18,6 +18,7 @@
   const fmt = (t, withTime = true) => (t ? new Date(t).toLocaleString("th-TH", withTime ? { dateStyle: "medium", timeStyle: "short" } : { dateStyle: "medium" }) : "—");
   const GAME = { melody: "สร้างดนตรี", decor: "หาสิ่งผิดปกติ", market: "ตลาดผลไม้" };
   const ROLE = { player: "ผู้เล่น", doctor: "แพทย์" };
+  const HOME_ICON = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 3.2 2.6 11a1 1 0 0 0 1.3 1.5l.9-.8V20a1 1 0 0 0 1 1h4.4v-5.6h3.6V21h4.4a1 1 0 0 0 1-1v-8.3l.9.8A1 1 0 0 0 21.4 11Z"/></svg>';
 
   // ---------------------------------------------------------------------
   // Gate: signed in + staff
@@ -44,7 +45,7 @@
               <p class="gate-err" role="alert"></p>
               <button class="btn is-primary" type="submit">เข้าสู่ระบบ</button>
             </form>`}
-          <a class="link" href="index.html">กลับเข้าเกม</a>
+          <a class="btn home-btn gate-home" href="index.html">${HOME_ICON}<span>กลับเข้าเกม</span></a>
         </div>
       </main>`;
     const out = app.querySelector('[data-act="out"]');
@@ -72,11 +73,13 @@
 
   app.innerHTML = `
     <header class="top">
-      <div class="top-brand"><span class="brand">MEMOIR</span><span class="top-title">ระบบหลังบ้าน</span></div>
+      <div class="top-brand">
+        <a class="btn home-btn" href="index.html">${HOME_ICON}<span>กลับเข้าเกม</span></a>
+        <span class="brand">MEMOIR</span><span class="top-title">ระบบหลังบ้าน</span>
+      </div>
       <div class="top-me">
         <span class="me-mail">${esc(me.email)}</span>
         <span class="tag tag-staff">${esc(A.STAFF_TXT[me.staff])}</span>
-        <a class="btn small" href="index.html">กลับเข้าเกม</a>
         <button class="btn small" data-act="out">ออกจากระบบ</button>
       </div>
     </header>
