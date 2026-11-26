@@ -49,10 +49,18 @@
     i.draggable = false;
     return i;
   }
+  // Pieces on the play screen follow the screen turning (landscape: same size, pinned to their side).
+  // Pieces inside a popup keep their portrait boxes: in landscape the popup itself becomes a
+  // centred portrait-shaped panel (css: html.is-land .ui-popup).
+  function placeIn(el, box, parent) {
+    const O = window.Memoir.orient;
+    if (!O || parent.closest(".ui-popup")) return place(el, box);
+    return O.box(el, [box.x, box.y, box.w, box.h], "auto");
+  }
   function uiImg(name, parent, cls) {
     const i = img(UI_DIR + name + ".png");
     i.className = "ui-piece" + (cls ? " " + cls : "");
-    parent.appendChild(place(i, UI[name]));
+    parent.appendChild(placeIn(i, UI[name], parent));
     return i;
   }
   function uiBtn(name, parent, label, onClick) {
@@ -62,14 +70,20 @@
     btn.setAttribute("aria-label", label);
     btn.appendChild(img(UI_DIR + name + ".png"));
     btn.addEventListener("click", onClick);
-    parent.appendChild(place(btn, UI[name]));
+    parent.appendChild(placeIn(btn, UI[name], parent));
     return btn;
   }
   function uiNum(key, parent, cls) {
     const s = document.createElement("span");
     s.className = "ui-num " + cls;
-    s.style.left = NUM[key].x + "%";
-    s.style.top = NUM[key].y + "%";
+    const O = window.Memoir.orient;
+    const put = () => {
+      const p = O && O.isLand() ? O.autoBox([NUM[key].x, NUM[key].y, 0, 0]) : [NUM[key].x, NUM[key].y];
+      s.style.left = p[0] + "%";
+      s.style.top = p[1] + "%";
+    };
+    put();
+    if (O) O.on(put);
     parent.appendChild(s);
     return s;
   }

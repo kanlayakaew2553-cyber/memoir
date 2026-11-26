@@ -98,6 +98,26 @@
     plant:        { name: "กระถางต้นไม้",     x: 38.52, y: 41.56, w: 19.44, h: 10.73, colour: true, noSize: true },
   };
 
+  // Landscape room (Drive "แยกเลเยอร์แนวนอน"): its own items, box in % of the 4:3 room
+  // (tools/prep_landscape.ps1 -> assets/decor/web/items_land).
+  const DIR_LAND = "assets/decor/web/items_land/";
+  const ITEMS_LAND = {
+    books:   { name: "กองหนังสือ",  x: 4.79,  y: 41.67, w: 4.93,  h: 6.64,  colour: true  },
+    books2:  { name: "กองหนังสือ",  x: 3.56,  y: 32.81, w: 6.30,  h: 7.29,  colour: true  },
+    clock:   { name: "นาฬิกา",       x: 16.85, y: 11.72, w: 6.15,  h: 8.20,  colour: true  },
+    coffee:  { name: "แก้วกาแฟ",    x: 84.62, y: 68.16, w: 4.88,  h: 3.97,  colour: true  },
+    cookies: { name: "ชามคุกกี้",    x: 89.06, y: 70.25, w: 5.37,  h: 4.30,  colour: true  },
+    dad:     { name: "รูปพ่อ",       x: 8.35,  y: 22.85, w: 8.74,  h: 8.40,  colour: true  },
+    record:  { name: "แผ่นเสียง",    x: 7.32,  y: 78.97, w: 8.15,  h: 9.51,  colour: true  },
+    record2: { name: "แผ่นเสียง",    x: 10.16, y: 70.83, w: 10.50, h: 7.68,  colour: true  },
+    rubik:   { name: "รูบิก",        x: 3.86,  y: 55.21, w: 2.98,  h: 3.71,  colour: true  },
+    toycar:  { name: "รถของเล่น",    x: 0.83,  y: 26.69, w: 6.54,  h: 4.82,  colour: true  },
+    vase:    { name: "แจกัน",        x: 89.84, y: 56.64, w: 4.00,  h: 11.59, colour: true  },
+  };
+  // the room picture and items that match the screen right now
+  const isLand = () => !!(window.Memoir.orient && window.Memoir.orient.isLand());
+  const roomSet = (land) => (land ? { items: ITEMS_LAND, dir: DIR_LAND, minEasy: 30 } : { items: ITEMS, dir: DIR, minEasy: MIN_TARGET_AREA_EASY });
+
   // =====================================================================
   // Small helpers
   // =====================================================================
@@ -120,9 +140,9 @@
   // Room layout
   // =====================================================================
   // Only WHICH items appear is random; each one stays in its drawn spot.
-  function layoutRoom(count) {
-    return shuffle(Object.keys(ITEMS)).slice(0, count).map((id) => {
-      const it = ITEMS[id];
+  function layoutRoom(count, items) {
+    return shuffle(Object.keys(items)).slice(0, count).map((id) => {
+      const it = items[id];
       return { id, rect: { l: it.x, t: it.y, w: it.w, h: it.h } };
     });
   }
@@ -179,6 +199,7 @@
   bannerText.className = "decor-banner-text";
   bannerText.textContent = "สังเกตห้องนี้ไว้นะ!";
   banner.appendChild(bannerText);
+  if (window.Memoir.orient) window.Memoir.orient.box(bannerText, [15.6, 11.1, 37.5, 6.9], "auto");
 
   // Wrong-tap message
   const wrongMsg = A.uiImg("wrong_minus10", root, "ui-wrong");
@@ -215,16 +236,19 @@
   function start(level) {
     if (!window.Memoir.wallet.check(() => start(level))) return;   // out of hearts
     stop();
-    const placed = layoutRoom(itemCountFor(level));
+    const land = isLand();
+    const room = roomSet(land);
+    const ITEMS = room.items;
+    const placed = layoutRoom(Math.min(Object.keys(ITEMS).length, itemCountFor(level)), ITEMS);
     const strength = changeStrengthFor(level);
-    const big = placed.filter((p) => p.rect.w * p.rect.h >= MIN_TARGET_AREA_EASY);
+    const big = placed.filter((p) => p.rect.w * p.rect.h >= room.minEasy);
     const pool = strength.easy && big.length ? big : placed;
     const target = pool[Math.floor(Math.random() * pool.length)];
     const colourOk = ITEMS[target.id].colour;
     const kind = colourOk && (ITEMS[target.id].noSize || Math.random() < 0.5) ? "colour" : "size";
 
     S = {
-      level, placed, target, kind,
+      level, placed, target, kind, land, ITEMS,
       dir: Math.random() < 0.5 ? -1 : 1,
       sizeDir: strength.easy || Math.random() < 0.6 ? 1 : -1,   // easy levels: always small → big
       strength,
@@ -237,7 +261,7 @@
     els.items.innerHTML = "";
     placed.slice().sort((a, b) => (a.rect.t + a.rect.h) - (b.rect.t + b.rect.h)).forEach((p) => {
       const img = document.createElement("img");
-      img.src = DIR + p.id + ".png";
+      img.src = room.dir + p.id + ".png";
       img.alt = ITEMS[p.id].name;
       img.draggable = false;
       img.className = "decor-item";
@@ -413,7 +437,7 @@
     window.Memoir.wallet.loseHeart();
     ring(S.target.id, "is-reveal");
     const level = S.level;
-    const name = ITEMS[S.target.id].name;
+    const name = S.ITEMS[S.target.id].name;
     const how = S.kind === "colour" ? "เปลี่ยนสี" : (S.sizeDir > 0 ? "ขยายใหญ่ขึ้น" : "เล็กลง");
     // Let the player see which item it was before the popup covers the room
     note.textContent = "หมดเวลา! ดูของที่เปลี่ยน";
@@ -446,6 +470,7 @@
   function resume() {
     exitPop.hidden = true;
     if (!S) return;
+    if (S.land !== isLand() && S.phase !== "done") { start(S.level); return; }   // turned while paused
     S.paused = false;
     S.last = performance.now();
   }
@@ -455,6 +480,14 @@
     if (!S || !els.screen.classList.contains("is-active")) return;
     if (document.hidden) S.paused = true;
     else if (!popupOpen()) { S.paused = false; S.last = performance.now(); }
+  });
+
+  // Screen turned during a level: the other room has other items, so watch the new room from the
+  // start (same level, no heart lost). Not while a popup is open (resume() checks again).
+  if (window.Memoir.orient) window.Memoir.orient.on((land) => {
+    if (!S || S.land === land || !els.screen.classList.contains("is-active")) return;
+    if (S.phase === "done" || S.phase === "stopped" || popupOpen()) return;
+    start(S.level);
   });
 
   // debug: inspect / fast-forward from the browser console, e.g. Memoir.decor.debug.state().elapsed = 55

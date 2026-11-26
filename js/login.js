@@ -52,6 +52,7 @@
     </form>`;
   document.getElementById("screen-placeholder").before(screen);
   if (M.settings && M.settings.textPicker) M.settings.textPicker(screen);   // ขนาดตัวอักษร at the top
+  if (M.orient) M.orient.pic(screen.querySelector("img.layer"), "assets/land/bg_cover.jpg");   // landscape cover art
 
   const form = screen.querySelector(".login-form");
   const email = form.querySelector('[name="email"]');

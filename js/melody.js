@@ -135,7 +135,10 @@
     im.alt = "";
     im.draggable = false;
     b.appendChild(im);
-    A.place(b, box);
+    // landscape: 3 across × 2 rows (rec1-3 on top, rec4-6 below)
+    const col = i % 3, row = Math.floor(i / 3);
+    if (window.Memoir.orient) window.Memoir.orient.box(b, box, [12.1 + col * 26.3, 17 + row * 36, 23.25, 31]);
+    else A.place(b, box);
     b.addEventListener("pointerdown", (e) => { e.preventDefault(); onTap(i); });
     els.records.appendChild(b);
     return b;

@@ -21,7 +21,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <meta http-equiv="Cache-Control" content="no-cache">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Itim&display=swap">
-  <link rel="stylesheet" href="css/style.css?v=20261125d">
+  <link rel="stylesheet" href="css/style.css?v=20261126">
 </head>
 <body>
   <!-- Fills the space around the stage on iPads / tall phones with a soft copy of the current background -->
@@ -32,44 +32,44 @@
 
     <!-- ===== Cover / title ===== -->
     <section id="screen-cover" class="screen is-active" aria-label="หน้าปก">
-      <img class="layer" src="assets/cover/web/cover_bg.jpg" alt="" draggable="false">
+      <img class="layer" src="assets/cover/web/cover_bg.jpg" data-land-src="assets/land/bg_cover.jpg" alt="" draggable="false">
       <!-- Game logo: upper part of the screen, like a mobile title screen -->
-      <div class="cover-logo" style="left:3%; top:5%; width:94%; height:22.56%">
+      <div class="cover-logo" style="left:3%; top:5%; width:94%; height:22.56%" data-land-box="22,1.5,56,31.9">
         <img src="assets/cover/web/logo.png" alt="MEMOIR" draggable="false">
         <span class="logo-shine" aria-hidden="true"></span>
       </div>
-      <img id="start-normal"  class="layer start-pulse"           src="assets/cover/web/start_normal.png"  alt="" draggable="false">
-      <img id="start-pressed" class="layer start-pulse is-hidden" src="assets/cover/web/start_pressed.png" alt="" draggable="false">
+      <img id="start-normal"  class="layer start-pulse"           src="assets/cover/web/start_normal.png"  data-land-src="assets/land/pieces/cover_start_normal.png" data-land-box="33,80,34,16.2" alt="" draggable="false">
+      <img id="start-pressed" class="layer start-pulse is-hidden" src="assets/cover/web/start_pressed.png" data-land-src="assets/land/pieces/cover_start_pressed.png" data-land-box="33.61,81.53,33.28,14.51" alt="" draggable="false">
       <!-- Invisible hit area over the Start button (a bit larger than the art, easier to tap) -->
       <button id="start-btn" class="hit-area" type="button" aria-label="เริ่มเกม"
-              style="left:24%; top:68.5%; width:55%; height:13%"></button>
+              style="left:24%; top:68.5%; width:55%; height:13%" data-land-box="31,77,38,21"></button>
       <img id="dark-overlay" class="layer overlay" src="assets/cover/web/dark_overlay.png" alt="" draggable="false">
     </section>
 
     <!-- ===== Home (หน้าหลัก) — art from Drive "หน้าหลังstart" (positions: assets/home/web/ui.json) ===== -->
     <section id="screen-home" class="screen" aria-label="หน้าหลัก">
-      <img class="layer" src="assets/home/web/bg.jpg" alt="" draggable="false">
+      <img class="layer" src="assets/home/web/bg.jpg" data-land-src="assets/land/bg_home.jpg" alt="" draggable="false">
       <!-- the stamp menu at the bottom is shared by all menu screens: see #main-nav -->
     </section>
 
     <!-- ===== Game select (หน้าเลือกเกม) ===== -->
     <section id="screen-game-select" class="screen" aria-label="เลือกเกม">
-      <img class="layer" src="assets/game_select/web/bg.jpg" alt="" draggable="false">
+      <img class="layer" src="assets/game_select/web/bg.jpg" data-land-src="assets/land/bg_select.jpg" alt="" draggable="false">
 
       <!-- The 3 game buttons, lifted a little so they clear the stamp menu at the bottom.
            (BACK was removed: the stamp menu now takes the player home.) -->
       <div class="gs-content">
-        <img class="layer press-art" id="art-melody" src="assets/game_select/web/btn_melody.png" alt="" draggable="false" style="--cx:56.5%; --cy:24.5%">
-        <img class="layer press-art" id="art-decor"  src="assets/game_select/web/btn_decor.png"  alt="" draggable="false" style="--cx:44.1%; --cy:49.7%">
-        <img class="layer press-art" id="art-market" src="assets/game_select/web/btn_market.png" alt="" draggable="false" style="--cx:53.4%; --cy:75.9%">
+        <img class="layer press-art" id="art-melody" src="assets/game_select/web/btn_melody.png" data-land-src="assets/land/pieces/game_select_btn_melody.png" data-land-box="35.6,3,36.85,22" alt="" draggable="false" style="--cx:56.5%; --cy:24.5%">
+        <img class="layer press-art" id="art-decor"  src="assets/game_select/web/btn_decor.png"  data-land-src="assets/land/pieces/game_select_btn_decor.png" data-land-box="28.4,28.5,35.2,22" alt="" draggable="false" style="--cx:44.1%; --cy:49.7%">
+        <img class="layer press-art" id="art-market" src="assets/game_select/web/btn_market.png" data-land-src="assets/land/pieces/game_select_btn_market.png" data-land-box="36.25,54,35.5,22" alt="" draggable="false" style="--cx:53.4%; --cy:75.9%">
 
         <!-- Hit areas, matched to each button's art -->
         <button class="hit-area" type="button" data-art="art-melody" data-go="screen-levels-melody"
-                aria-label="Memory Melody" style="left:15%; top:13.5%; width:82.5%; height:22%"></button>
+                aria-label="Memory Melody" style="left:15%; top:13.5%; width:82.5%; height:22%" data-land-box="35.6,3,36.85,22"></button>
         <button class="hit-area" type="button" data-art="art-decor" data-go="screen-levels-decor"
-                aria-label="Memory Decor" style="left:2.5%; top:39%; width:83%; height:21.5%"></button>
+                aria-label="Memory Decor" style="left:2.5%; top:39%; width:83%; height:21.5%" data-land-box="28.4,28.5,35.2,22"></button>
         <button class="hit-area" type="button" data-art="art-market" data-go="screen-levels-market"
-                aria-label="Memory Market" style="left:15%; top:64.5%; width:77%; height:23%"></button>
+                aria-label="Memory Market" style="left:15%; top:64.5%; width:77%; height:23%" data-land-box="36.25,54,35.5,22"></button>
       </div>
     </section>
 
@@ -77,7 +77,7 @@
 
     <!-- ===== Memory Decor: gameplay (js/decor.js) ===== -->
     <section id="screen-decor-game" class="screen" aria-label="Memory Decor">
-      <img class="layer" src="assets/decor/web/room.jpg" alt="" draggable="false">
+      <img class="layer" src="assets/decor/web/room.jpg" data-land-src="assets/land/bg_decor_room.jpg" alt="" draggable="false">
       <div id="decor-items" class="decor-items"></div>
       <div id="decor-flash" class="layer decor-flash"></div>
 
@@ -125,36 +125,36 @@
     <!-- ===== Stamp menu: shown on every menu screen (not during a game). js/main.js marks the current stamp. ===== -->
     <nav id="main-nav" class="main-nav" aria-label="เมนูหลัก" hidden>
       <img class="art-piece press-art nav-stamp" id="nav-games" data-tab="games" src="assets/home/web/tab_games.png" alt="" draggable="false"
-           style="left:2.13%; top:84.27%; width:32.78%; height:14.11%; --cx:50%; --cy:50%">
+           style="left:2.13%; top:84.27%; width:32.78%; height:14.11%; --cx:50%; --cy:50%" data-land-box="25,82,16.67,17">
       <img class="art-piece press-art nav-stamp" id="nav-home" data-tab="home" src="assets/home/web/tab_home.png" alt="" draggable="false"
-           style="left:34.17%; top:84.27%; width:32.78%; height:14.11%; --cx:50%; --cy:50%">
+           style="left:34.17%; top:84.27%; width:32.78%; height:14.11%; --cx:50%; --cy:50%" data-land-box="41.67,82,16.67,17">
       <img class="art-piece press-art nav-stamp" id="nav-rank" data-tab="rank" src="assets/home/web/tab_eval.png" alt="" draggable="false"
-           style="left:66.34%; top:84.4%; width:32.31%; height:14.3%; --cx:50%; --cy:50%">
+           style="left:66.34%; top:84.4%; width:32.31%; height:14.3%; --cx:50%; --cy:50%" data-land-box="58.33,82,16.67,17">
       <button class="hit-area tab-hit" type="button" data-art="nav-games" data-go="screen-game-select"
-              aria-label="เลือกเกม" style="left:1%; top:83.5%; width:33%; height:15.5%"></button>
+              aria-label="เลือกเกม" style="left:1%; top:83.5%; width:33%; height:15.5%" data-land-box="24.5,81,17.67,19"></button>
       <button class="hit-area tab-hit" type="button" data-art="nav-home" data-go="screen-home"
-              aria-label="หน้าหลัก" style="left:34%; top:83.5%; width:32%; height:15.5%"></button>
+              aria-label="หน้าหลัก" style="left:34%; top:83.5%; width:32%; height:15.5%" data-land-box="42.17,81,15.67,19"></button>
       <button class="hit-area tab-hit" type="button" data-art="nav-rank" data-go="screen-rank"
-              aria-label="ผลการประเมิน" style="left:66%; top:83.5%; width:33%; height:15.5%"></button>
+              aria-label="ผลการประเมิน" style="left:66%; top:83.5%; width:33%; height:15.5%" data-land-box="57.83,81,17.67,19"></button>
     </nav>
 
     <!-- Short messages ("toast") shown on any screen -->
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   </main>
-  <script src="js/userstore.js?v=20261125d"></script>
-  <script src="js/main.js?v=20261125d"></script>
-  <script src="js/theme.js?v=20261125d"></script>
-  <script src="js/sound.js?v=20261125d"></script>
-  <script src="js/settings.js?v=20261125d"></script>
-  <script src="js/wallet.js?v=20261125d"></script>
-  <script src="js/quests.js?v=20261125d"></script>
-  <script src="js/artui.js?v=20261125d"></script>
-  <script src="js/decor.js?v=20261125d"></script>
-  <script src="js/melody.js?v=20261125d"></script>
-  <script src="js/market.js?v=20261125d"></script>
-  <script src="js/rank.js?v=20261125d"></script>
-  <script src="js/howto.js?v=20261125d"></script>
-  <script src="js/login.js?v=20261125d"></script>
+  <script src="js/userstore.js?v=20261126"></script>
+  <script src="js/main.js?v=20261126"></script>
+  <script src="js/theme.js?v=20261126"></script>
+  <script src="js/sound.js?v=20261126"></script>
+  <script src="js/settings.js?v=20261126"></script>
+  <script src="js/wallet.js?v=20261126"></script>
+  <script src="js/quests.js?v=20261126"></script>
+  <script src="js/artui.js?v=20261126"></script>
+  <script src="js/decor.js?v=20261126"></script>
+  <script src="js/melody.js?v=20261126"></script>
+  <script src="js/market.js?v=20261126"></script>
+  <script src="js/rank.js?v=20261126"></script>
+  <script src="js/howto.js?v=20261126"></script>
+  <script src="js/login.js?v=20261126"></script>
 </body>
 </html>

@@ -156,7 +156,8 @@
   back.type = "button";
   back.setAttribute("aria-label", "กลับ");
   back.innerHTML = '<img src="assets/ui/web/top_back.png" alt="" draggable="false">';
-  Object.assign(back.style, { left: "3.24%", top: "2.76%", width: "10.09%", height: "4.17%" });
+  if (M.orient) M.orient.box(back, [3.24, 2.76, 10.09, 4.17], "auto");
+  else Object.assign(back.style, { left: "3.24%", top: "2.76%", width: "10.09%", height: "4.17%" });
   back.addEventListener("click", () => M.showScreen("screen-home"));
   screen.append(back);
 

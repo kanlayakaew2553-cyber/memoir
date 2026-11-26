@@ -22,7 +22,8 @@
   function updateBackdrop(id) {
     const s = document.getElementById(id);
     if (!s || !backdrop) return;
-    const pic = s.querySelector("img.layer");
+    const land = document.documentElement.classList.contains("is-land");
+    const pic = (land && s.querySelector("img.level-land-bg")) || s.querySelector("img.layer");
     let url = pic ? `url("${pic.src}")` : getComputedStyle(s).backgroundImage;
     if (!url || url === "none") return;          // keep the last one (e.g. the plain placeholder)
     backdrop.style.backgroundImage = url;
@@ -93,7 +94,82 @@
 
   // run fn each time screen id is shown (several scripts may add one for the same screen)
   const onShow = (id, fn) => { const prev = onShowHooks[id]; onShowHooks[id] = prev ? () => { prev(); fn(); } : fn; };
-  window.Memoir = { showScreen, toast, progress, history, onShow };
+
+  // =====================================================================
+  // Portrait / landscape. Landscape (screen wider than tall) uses the 4:3 landscape art and
+  // landscape positions; html.is-land switches the CSS. Every piece placed with orient.box()
+  // or given a landscape picture with orient.pic() is switched here when the screen turns.
+  //   box: [left, top, width, height] in % of the stage, or null = the full stage (a .layer)
+  //   "auto" landscape box: the portrait piece kept the same size on screen and pinned to the
+  //   side it sits on (left / middle / right), e.g. the in-game top bar.
+  // =====================================================================
+  const docEl = document.documentElement;
+  const landNow = () => window.innerWidth > window.innerHeight * 1.05;
+  let isLand = landNow();
+  docEl.classList.toggle("is-land", isLand);
+  const boxed = new Map();      // element -> { port, land }
+  const pics = new Map();       // img -> { port, land }
+  const orientFns = [];
+  // portrait % box on the 9:16 stage -> landscape % box on the 4:3 stage, same size on screen
+  const K_LAND = (9 / 16) / (4 / 3) * (0.75 / 0.5625);   // portrait width % -> landscape width % (= 0.5625)
+  function autoBox([l, t, w, h]) {
+    const KH = 0.75 / 0.5625;                                       // portrait height % -> landscape height %
+    const lw = w * K_LAND, lh = h * KH;
+    const cx = l + w / 2, cy = t + h / 2;
+    let ll, lt;
+    if (cx < 34) ll = l * K_LAND;                                   // pinned left
+    else if (cx > 66) ll = 100 - (100 - l - w) * K_LAND - lw;       // pinned right
+    else ll = 50 + (cx - 50) * K_LAND - lw / 2;                    // middle
+    if (cy < 40) lt = t * KH;                                       // pinned top
+    else if (cy > 60) lt = 100 - (100 - t - h) * KH - lh;           // pinned bottom
+    else lt = 50 + (cy - 50) * KH - lh / 2;
+    return [ll, lt, lw, lh];
+  }
+  const asArr = (b) => (b == null ? null : Array.isArray(b) ? b : [b.x, b.y, b.w, b.h]);
+  function setBox(el, b) {
+    if (!b) { el.style.left = el.style.top = el.style.width = el.style.height = ""; return; }
+    Object.assign(el.style, { left: b[0] + "%", top: b[1] + "%", width: b[2] + "%", height: b[3] + "%" });
+  }
+  function applyOne(el, o) { setBox(el, isLand ? (o.land === "auto" ? autoBox(o.port) : o.land) : o.port); }
+  const orient = {
+    isLand: () => isLand,
+    on(fn) { orientFns.push(fn); },
+    autoBox,
+    box(el, port, land = "auto") {
+      const o = { port: asArr(port), land: land === "auto" ? (port == null ? null : "auto") : asArr(land) };
+      boxed.set(el, o);
+      applyOne(el, o);
+      return el;
+    },
+    pic(img, land) {
+      const o = { port: img.getAttribute("src"), land };
+      pics.set(img, o);
+      if (isLand) img.src = land;
+      return img;
+    },
+  };
+  function applyOrient() {
+    const l = landNow();
+    if (l === isLand) return;
+    isLand = l;
+    docEl.classList.toggle("is-land", l);
+    boxed.forEach((o, el) => applyOne(el, o));
+    pics.forEach((o, img) => { img.src = l ? o.land : o.port; });
+    orientFns.forEach((fn) => { try { fn(l); } catch (e) { console.error(e); } });
+    updateBackdrop(current);
+  }
+  ["resize", "orientationchange"].forEach((t) => window.addEventListener(t, () => requestAnimationFrame(applyOrient)));
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", () => requestAnimationFrame(applyOrient));
+  // pieces written in index.html: data-land-src="…" (picture) and data-land-box="l,t,w,h" or "auto"
+  document.querySelectorAll("[data-land-src]").forEach((el) => orient.pic(el, el.dataset.landSrc));
+  document.querySelectorAll("[data-land-box]").forEach((el) => {
+    const s = el.style;
+    const port = s.left ? [parseFloat(s.left), parseFloat(s.top), parseFloat(s.width), parseFloat(s.height)] : null;
+    const v = el.dataset.landBox;
+    orient.box(el, port, v === "auto" ? "auto" : v.split(",").map(Number));
+  });
+
+  window.Memoir = { showScreen, toast, progress, history, onShow, orient };
 
   // ---------- Level select screens (built from config) ----------
   // box = [left, top, width, height] in % of the 9:16 canvas, measured from each button layer.
@@ -140,6 +216,13 @@
     },
   ];
 
+
+  // Landscape level maps (4:3 art in assets/land): marker height and the two rows' centre (% of the stage)
+  const LAND_MAPS = {
+    melody: { bg: "bg_levels_melody.jpg", h: 20, rows: [60, 24] },
+    market: { bg: "bg_levels_market.jpg", h: 28, rows: [57, 22] },
+    decor:  { bg: "bg_levels_decor.jpg",  h: 19, rows: [60, 24] },
+  };
 
   function img(src, className) {
     const el = document.createElement("img");
@@ -231,6 +314,44 @@
       }
     });
 
+    // ---------- Landscape map: the 4:3 art, all 10 levels on one screen in a snake path ----------
+    //   bottom row 1→5 left to right, top row 6→10 right to left (markers: the portrait level art, cropped)
+    const L = LAND_MAPS[cfg.key];
+    if (L) {
+      const land = document.createElement("div");
+      land.className = "level-land";
+      land.style.background = cfg.padColor;
+      const bgImg = img(`assets/land/${L.bg}`);
+      bgImg.classList.add("level-land-bg");
+      land.appendChild(bgImg);
+      const XS = [12, 31, 50, 69, 88];
+      for (let n = 1; n <= LEVEL_COUNT; n++) {
+        const row = n <= 5 ? 0 : 1;
+        const col = row === 0 ? n - 1 : 10 - n;
+        const mk = document.createElement("div");
+        mk.className = "lv-land-mk";
+        Object.assign(mk.style, { left: XS[col] + "%", top: L.rows[row] + "%", height: L.h + "%" });
+        const art = img(`assets/land/pieces/levels_${cfg.key}_lv${n}.png`, "press-art");
+        art.classList.remove("layer");
+        art.id = `${cfg.id}-lart-${n}`;
+        mk.appendChild(art);
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "hit-area";
+        btn.dataset.art = art.id;
+        btn.dataset.game = cfg.key;
+        btn.dataset.level = n;
+        btn.setAttribute("aria-label", `ด่าน ${n}`);
+        mk.appendChild(btn);
+        const stars = document.createElement("div");
+        stars.className = "lv-stars";
+        stars.id = `${cfg.id}-lstars-${n}`;
+        mk.appendChild(stars);
+        land.appendChild(mk);
+      }
+      screen.appendChild(land);
+    }
+
     const toBottom = () => { scroller.scrollTop = scroller.scrollHeight; };
     onShowHooks[cfg.id] = toBottom;
     if (cfg.key) {
@@ -239,12 +360,17 @@
         for (let n = 1; n <= LEVEL_COUNT; n++) {
           const got = progress.stars(cfg.key, n);
           const locked = !progress.isUnlocked(cfg.key, n);
-          document.getElementById(`${cfg.id}-art-${n}`).classList.toggle("is-locked", locked);
-          const s = document.getElementById(`${cfg.id}-stars-${n}`);
-          s.innerHTML = locked
-            ? '<img class="lv-lock" src="assets/icons/web/lock.png" alt="ล็อก" draggable="false">'
-            : [1, 2, 3].map((k) => `<img src="assets/ui/web/star_single.png" alt="" draggable="false" class="${k <= got ? "on" : ""}">`).join("");
-          s.setAttribute("aria-label", locked ? "ล็อก" : `${got} ดาว`);
+          // portrait map ("art"/"stars") and landscape map ("lart"/"lstars")
+          [["art", "stars"], ["lart", "lstars"]].forEach(([a, st]) => {
+            const artEl = document.getElementById(`${cfg.id}-${a}-${n}`);
+            if (artEl) artEl.classList.toggle("is-locked", locked);
+            const s = document.getElementById(`${cfg.id}-${st}-${n}`);
+            if (!s) return;
+            s.innerHTML = locked
+              ? '<img class="lv-lock" src="assets/icons/web/lock.png" alt="ล็อก" draggable="false">'
+              : [1, 2, 3].map((k) => `<img src="assets/ui/web/star_single.png" alt="" draggable="false" class="${k <= got ? "on" : ""}">`).join("");
+            s.setAttribute("aria-label", locked ? "ล็อก" : `${got} ดาว`);
+          });
         }
       };
     }
@@ -256,7 +382,7 @@
     back.dataset.go = "screen-game-select";
     back.setAttribute("aria-label", "กลับ");
     back.innerHTML = '<img src="assets/ui/web/top_back.png" alt="" draggable="false">';
-    Object.assign(back.style, { left: "3.24%", top: "2.76%", width: "10.09%", height: "4.17%" });
+    orient.box(back, [3.24, 2.76, 10.09, 4.17], "auto");
     screen.appendChild(back);   // stays put while the map scrolls
 
     document.getElementById("screen-placeholder").before(screen);
