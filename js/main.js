@@ -130,13 +130,32 @@
     if (!b) { el.style.left = el.style.top = el.style.width = el.style.height = ""; return; }
     Object.assign(el.style, { left: b[0] + "%", top: b[1] + "%", width: b[2] + "%", height: b[3] + "%" });
   }
-  function applyOne(el, o) { setBox(el, isLand ? (o.land === "auto" ? autoBox(o.port) : o.land) : o.port); }
+  // Landscape fills the whole screen, which may be wider than the 4:3 art: boxes are designed on a
+  // 4:3 stage, then kept the same shape (height % unchanged, width scaled) and pinned to their
+  // side (anchor "auto": by where they sit; "center" / "left" / "right" for a group, e.g. the menu).
+  const stageEl = document.getElementById("stage");
+  function fitWide(b, anchor = "auto") {
+    if (!b) return b;
+    const r = stageEl.getBoundingClientRect();
+    const A = r.height ? r.width / r.height : 4 / 3;
+    const k = (4 / 3) / A;
+    if (Math.abs(k - 1) < 0.01) return b;
+    const [l, t, w, h] = b, cx = l + w / 2, nw = w * k;
+    const side = anchor !== "auto" ? anchor : cx < 34 ? "left" : cx > 66 ? "right" : "center";
+    const nl = side === "left" ? l * k : side === "right" ? 100 - (100 - l - w) * k - nw : 50 + (cx - 50) * k - nw / 2;
+    return [nl, t, nw, h];
+  }
+  function applyOne(el, o) {
+    if (!isLand) { setBox(el, o.port); return; }
+    setBox(el, fitWide(o.land === "auto" ? autoBox(o.port) : o.land, o.anchor));
+  }
   const orient = {
     isLand: () => isLand,
     on(fn) { orientFns.push(fn); },
-    autoBox,
-    box(el, port, land = "auto") {
-      const o = { port: asArr(port), land: land === "auto" ? (port == null ? null : "auto") : asArr(land) };
+    autoBox: (b) => fitWide(autoBox(b)),
+    fitWide,
+    box(el, port, land = "auto", anchor = "auto") {
+      const o = { port: asArr(port), land: land === "auto" ? (port == null ? null : "auto") : asArr(land), anchor };
       boxed.set(el, o);
       applyOne(el, o);
       return el;
@@ -150,7 +169,7 @@
   };
   function applyOrient() {
     const l = landNow();
-    if (l === isLand) return;
+    if (l === isLand) { if (l) boxed.forEach((o, el) => applyOne(el, o)); orientFns.forEach((fn) => { try { fn(l, true); } catch (e) { console.error(e); } }); return; }   // same side, new width: re-fit
     isLand = l;
     docEl.classList.toggle("is-land", l);
     boxed.forEach((o, el) => applyOne(el, o));
@@ -166,7 +185,7 @@
     const s = el.style;
     const port = s.left ? [parseFloat(s.left), parseFloat(s.top), parseFloat(s.width), parseFloat(s.height)] : null;
     const v = el.dataset.landBox;
-    orient.box(el, port, v === "auto" ? "auto" : v.split(",").map(Number));
+    orient.box(el, port, v === "auto" ? "auto" : v.split(",").map(Number), el.dataset.landAnchor || "auto");
   });
 
   window.Memoir = { showScreen, toast, progress, history, onShow, orient };

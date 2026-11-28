@@ -62,9 +62,10 @@ img { -webkit-user-drag: none; }
 html.is-land { --u: 0.75cqh; }
 /* Landscape (html.is-land, set by js/main.js when the screen is wider than tall): 4:3 stage */
 html.is-land #stage {
-  width:  min(var(--avail-w), calc(var(--avail-h) * 4 / 3));
-  height: min(var(--avail-h), calc(var(--avail-w) * 3 / 4));
-  border-radius: 2.2vmin;
+  /* landscape fills the whole screen; pieces are fitted to its width by js/main.js (orient) */
+  width: var(--avail-w);
+  height: var(--avail-h);
+  border-radius: 0;
 }
 
 /* Backdrop behind the stage: blurred, darker copy of the current screen's background */
@@ -1561,10 +1562,10 @@ html.is-3d .settings-btn { box-shadow: 0 calc(1 * var(--u)) 0 #4a1a06, 0 calc(1.
    Widths written in % of the stage are converted: portrait W% -> landscape W% × 0.5625.
    ===================================================================== */
 /* ---------- home ---------- */
-html.is-land .profile-chip { left: 1.5%; top: 2.5%; width: 23%; }
-html.is-land .wallet-bar { left: auto; right: 10.5%; width: 29.5%; top: 2.5%; }
-html.is-land .quest-btn { left: 2.5%; top: 17%; width: 8.4%; }
-html.is-land .shop-btn { left: 1.6%; top: calc(46% + (var(--ts) - 1) * calc(9 * var(--u))); width: 10.1%; }
+html.is-land .profile-chip { left: 1.5%; top: 2.5%; width: calc(40.9 * var(--u)); }
+html.is-land .wallet-bar { left: auto; right: calc(18.7 * var(--u)); width: calc(52.4 * var(--u)); top: 2.5%; }
+html.is-land .quest-btn { left: 2.5%; top: 17%; width: calc(14.9 * var(--u)); }
+html.is-land .shop-btn { left: 1.6%; top: calc(46% + (var(--ts) - 1) * calc(9 * var(--u))); width: calc(18 * var(--u)); }
 /* ---------- level maps: the landscape map replaces the scrolling portrait map ---------- */
 .level-land { display: none; }
 html.is-land .level-scroll { display: none; }
@@ -1585,9 +1586,9 @@ html.is-land .ui-popup { box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.5); backgroun
 /* backgrounds drawn for portrait fill the 4:3 stage without stretching */
 html.is-land .screen > img.layer { object-fit: cover; }
 /* ---------- Melody ---------- */
-html.is-land .melody-tries { left: 87.06%; top: 1.6%; width: 12.1%; height: 8.8%; }
-html.is-land .melody-timer { left: 92.5%; top: 42%; }
-html.is-land .melody-task { left: 10.3%; right: 10.3%; top: 13.6%; bottom: 13%; }
+html.is-land .melody-tries { left: auto; right: calc(1.5 * var(--u)); top: 1.6%; width: calc(21.5 * var(--u)); height: 8.8%; }
+html.is-land .melody-timer { left: calc(100% - 13.3 * var(--u)); top: 42%; }
+html.is-land .melody-task { left: calc(50% - 70.6 * var(--u)); right: calc(50% - 70.6 * var(--u)); top: 13.6%; bottom: 13%; }
 html.is-land .melody-hint, html.is-land .decor-note { top: 87.5%; }
 /* ---------- Market: the 9:16 playing field stays upright in the middle; counters left, next fruit right ---------- */
 html.is-land .market-canvas { left: calc(50% - 100cqh * 9 / 32); width: calc(100cqh * 9 / 16); }
@@ -1595,13 +1596,29 @@ html.is-land .mk-counters {
   left: 2%; top: 14%; width: auto; height: auto; flex-direction: column; align-items: flex-start;
   gap: calc(1.4 * var(--u)); padding: calc(2 * var(--u)) calc(2.4 * var(--u));
 }
-html.is-land .mk-next { left: auto; right: 2%; top: 14%; width: 11%; height: 14.7%; }
-html.is-land .mk-quest { width: 44%; top: 20%; }
+html.is-land .mk-next { left: auto; right: calc(3.6 * var(--u)); top: 14%; width: calc(19.6 * var(--u)); height: 14.7%; }
+html.is-land .mk-quest { width: calc(78 * var(--u)); top: 20%; }
 /* ---------- Login: logo on the left, the form (portrait layout, enlarged to the full height) on the right ---------- */
-html.is-land .login-form { inset: auto; left: 45%; top: -27%; height: 125%; width: calc(125cqh * 9 / 16); }
-html.is-land .login-logo { left: 2%; top: 34%; width: 41%; }
-html.is-land .login-textsize { left: 2%; right: auto; width: 41%; top: 3%; }
+html.is-land .login-form { inset: auto; left: calc(50% - 8.9 * var(--u)); top: -27%; height: 125%; width: calc(125cqh * 9 / 16); }
+html.is-land .login-logo { left: calc(50% - 85.3 * var(--u)); top: 34%; width: calc(72.9 * var(--u)); }
+html.is-land .login-textsize { left: calc(50% - 85.3 * var(--u)); right: auto; width: calc(72.9 * var(--u)); top: 3%; }
 /* ---------- ผลการประเมิน: cards use the full width; drawn pieces keep their shape ---------- */
 html.is-land .rank-screen .rk-art { object-fit: contain; }
 html.is-land .rank-screen img.rk-art[src$="wood.png"] { object-fit: cover; object-position: top; }
 html.is-land .rk-tab img { object-fit: contain; }
+/* ---------- Decor on wide screens: the 4:3 room fills the width, cropped top/bottom only as far as the
+   items allow (they sit between 11% and 89% of the room). Wider still (long phones): a soft blurred
+   copy of the room fills the edges. ---------- */
+html.is-land #screen-decor-game > img.layer,
+html.is-land #screen-decor-game .decor-items {
+  inset: auto; left: 50%; top: 50%; translate: -50% -50%;
+  width: min(100%, calc(100cqh * 4 / 3 / 0.77)); height: auto; aspect-ratio: 4 / 3;
+}
+html.is-land #screen-decor-game { background: #6b3f1e; overflow: hidden; }
+html.is-land #screen-decor-game::before {
+  content: ""; position: absolute; inset: -6%;
+  background: url("../assets/land/bg_decor_room.jpg") center / cover no-repeat;
+  filter: blur(2.4cqh) brightness(0.75);
+}
+/* home: keep the "เมมมอร์" sign in view when the picture is cropped */
+html.is-land #screen-home > img.layer { object-position: 50% 30%; }
